@@ -1,0 +1,53 @@
+@import "tailwindcss";
+
+/*
+  Design tokens — derived from the validated Stitch mockups.
+  Keep these as the single source of truth for color so every
+  screen stays visually consistent (this was the recurring problem
+  in Stitch: colors drifting screen to screen).
+*/
+:root {
+  --background: #f7f9fb;
+  --foreground: #1f2937;
+
+  /* Brand */
+  --color-navy: #1e3a5f;
+  --color-navy-dark: #16293f;
+  --color-accent: #4a90d9;
+  --color-accent-light: #eaf2fb;
+
+  /* Status colors (only ever 3 states across the app) */
+  --color-status-new: #4a90d9;
+  --color-status-new-bg: #eaf2fb;
+  --color-status-progress: #e08e2b;
+  --color-status-progress-bg: #fdf1e2;
+  --color-status-done: #2f9e5c;
+  --color-status-done-bg: #e7f6ed;
+
+  --color-border: #e5e9ef;
+  --color-muted: #6b7280;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-navy: var(--color-navy);
+  --color-navy-dark: var(--color-navy-dark);
+  --color-accent: var(--color-accent);
+  --color-accent-light: var(--color-accent-light);
+  --color-status-new: var(--color-status-new);
+  --color-status-new-bg: var(--color-status-new-bg);
+  --color-status-progress: var(--color-status-progress);
+  --color-status-progress-bg: var(--color-status-progress-bg);
+  --color-status-done: var(--color-status-done);
+  --color-status-done-bg: var(--color-status-done-bg);
+  --color-border: var(--color-border);
+  --color-muted: var(--color-muted);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, Helvetica, sans-serif;
+}
