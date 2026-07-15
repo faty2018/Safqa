@@ -1,0 +1,35 @@
+name: Collecte AO quotidienne
+
+on:
+  schedule:
+    # 6h00 heure du Maroc (UTC+1 été / UTC+0 hiver) = ~5h ou 6h UTC selon saison
+    - cron: "0 6 * * *"
+  workflow_dispatch: # permet aussi de le lancer manuellement depuis GitHub
+
+jobs:
+  collecte:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: scripts/collecteur
+
+    steps:
+      - name: Checkout du code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Installer les dépendances
+        run: npm install
+
+      - name: Installer Chromium (Playwright)
+        run: npx playwright install --with-deps chromium
+
+      - name: Lancer le collecteur
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node collect.mjs
