@@ -1,75 +1,161 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { StatusBadge } from "@/components/ui/StatusBadge";
+import { deriveStatus, type AO } from "@/lib/types";
+import { ArrowRight, Bookmark, Building2 } from "lucide-react";
 
-export default async function AdminDashboardPage() {
+export default async function DashboardPage() {
   const supabase = await createClient();
 
-  const [{ count: entreprisesCount }, { count: aoCount }, { count: usersCount }, { data: dernieresEntreprises }] =
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  let entrepriseId: string | null = null;
+  if (user) {
+    const { data: profile } = await supabase
+      .from("utilisateurs")
+      .select("entreprise_id")
+      .eq("id", user.id)
+      .single();
+    entrepriseId = profile?.entreprise_id ?? null;
+  }
+
+  const seDaysAgo = new Date(Date.now() - 7 * 86_400_000).toISOString();
+
+  const [{ count: suivisCount }, { count: nouveauxCount }, { data: suivisRecents }] =
     await Promise.all([
-      supabase.from("entreprises").select("*", { count: "exact", head: true }),
-      supabase.from("ao").select("*", { count: "exact", head: true }),
-      supabase.from("utilisateurs").select("*", { count: "exact", head: true }),
+      entrepriseId
+        ? supabase
+            .from("ao_suivis")
+            .select("*", { count: "exact", head: true })
+            .eq("entreprise_id", entrepriseId)
+        : Promise.resolve({ count: 0 }),
       supabase
-        .from("entreprises")
-        .select("id, raison_sociale, ice, date_inscription")
-        .order("date_inscription", { ascending: false })
-        .limit(5),
+        .from("ao")
+        .select("*", { count: "exact", head: true })
+        .gte("created_at", seDaysAgo),
+      entrepriseId
+        ? supabase
+            .from("ao_suivis")
+            .select(
+              "date_ajout, ao(id, reference, intitule, acheteur_public, date_limite_remise_plis, lien_source)"
+            )
+            .eq("entreprise_id", entrepriseId)
+            .order("date_ajout", { ascending: false })
+            .limit(5)
+        : Promise.resolve({ data: [] }),
     ]);
 
-  return (
-    <div>
-      <h1 className="text-2xl font-semibold text-[var(--color-navy)]">
-        Tableau de bord — Admin
-      </h1>
-      <p className="mt-1 text-sm text-[var(--color-muted)]">
-        Vue d&apos;ensemble des entreprises et appels d&apos;offres suivis sur la plateforme.
-      </p>
+  const suivis = (suivisRecents ?? []) as any[];
 
-      <div className="mt-6 grid grid-cols-3 gap-4">
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-semibold text-[var(--color-navy)]">Tableau de bord</h1>
+          <p className="text-sm text-[var(--color-muted)]">
+            Gérez vos opportunités de marchés publics en temps réel.
+          </p>
+        </div>
+        <Link
+          href="/recherche"
+          className="flex items-center gap-1.5 rounded-md bg-[var(--color-navy)] px-3.5 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
+        >
+          Voir toutes les opportunités <ArrowRight size={14} />
+        </Link>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <div className="rounded-lg border border-[var(--color-border)] bg-white p-4">
           <p className="text-xs font-medium uppercase text-[var(--color-muted)]">
-            Entreprises inscrites
+            Appels d&apos;offres suivis
           </p>
-          <p className="mt-2 text-2xl font-semibold">{entreprisesCount ?? 0}</p>
+          <p className="mt-2 text-2xl font-semibold text-[var(--color-navy)]">
+            {suivisCount ?? 0}
+          </p>
         </div>
         <div className="rounded-lg border border-[var(--color-border)] bg-white p-4">
           <p className="text-xs font-medium uppercase text-[var(--color-muted)]">
-            AO collectés
+            Nouveaux AO (7 jours)
           </p>
-          <p className="mt-2 text-2xl font-semibold">{aoCount ?? 0}</p>
+          <p className="mt-2 text-2xl font-semibold text-[var(--color-navy)]">
+            {nouveauxCount ?? 0}
+          </p>
+          <p className="mt-0.5 text-[11px] text-[var(--color-muted)]">Tous secteurs</p>
         </div>
         <div className="rounded-lg border border-[var(--color-border)] bg-white p-4">
           <p className="text-xs font-medium uppercase text-[var(--color-muted)]">
-            Utilisateurs actifs
+            Réponses en cours
           </p>
-          <p className="mt-2 text-2xl font-semibold">{usersCount ?? 0}</p>
+          <p className="mt-2 text-2xl font-semibold text-[var(--color-muted)]">—</p>
+        </div>
+        <div className="rounded-lg border border-[var(--color-navy)] bg-[var(--color-navy)] p-4">
+          <p className="text-xs font-medium uppercase text-white/70">Alertes non lues</p>
+          <p className="mt-2 text-2xl font-semibold text-white">—</p>
         </div>
       </div>
 
-      <div className="mt-6 rounded-lg border border-[var(--color-border)] bg-white p-4">
-        <h2 className="font-medium text-[var(--color-navy)]">Dernières entreprises inscrites</h2>
-        <div className="mt-3 divide-y divide-[var(--color-border)]">
-          {dernieresEntreprises?.length ? (
-            dernieresEntreprises.map((e) => (
-              <div key={e.id} className="flex items-center justify-between py-2 text-sm">
-                <div>
-                  <p className="font-medium">{e.raison_sociale}</p>
-                  <p className="text-xs text-[var(--color-muted)]">ICE {e.ice}</p>
-                </div>
-                <p className="text-xs text-[var(--color-muted)]">
-                  {new Date(e.date_inscription).toLocaleDateString("fr-FR")}
-                </p>
-              </div>
-            ))
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="rounded-lg border border-[var(--color-border)] bg-white p-4 lg:col-span-2">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-[var(--color-navy)]">
+              Appels d&apos;offres suivis récemment
+            </h2>
+            <Link
+              href="/recherche"
+              className="text-xs font-medium text-[var(--color-navy)] hover:underline"
+            >
+              Tout voir →
+            </Link>
+          </div>
+
+          {suivis.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-10 text-center">
+              <Bookmark size={20} className="mb-2 text-[var(--color-muted)]" />
+              <p className="text-sm text-[var(--color-navy)]">
+                Vous ne suivez aucun appel d&apos;offres pour l&apos;instant
+              </p>
+              <Link
+                href="/recherche"
+                className="mt-2 text-xs font-medium text-[var(--color-navy)] hover:underline"
+              >
+                Explorer les opportunités
+              </Link>
+            </div>
           ) : (
-            <p className="py-2 text-sm text-[var(--color-muted)]">Aucune entreprise inscrite.</p>
+            <div className="divide-y divide-[var(--color-border)]">
+              {suivis.map((s) => {
+                const ao = s.ao as AO | null;
+                if (!ao) return null;
+                const status = deriveStatus(ao);
+                return (
+                  <div key={ao.id} className="flex items-center justify-between gap-3 py-2.5">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-[var(--color-navy)]">
+                        {ao.intitule}
+                      </p>
+                      <div className="mt-0.5 flex items-center gap-1.5 text-xs text-[var(--color-muted)]">
+                        <Building2 size={12} />
+                        <span className="truncate">{ao.acheteurPublic}</span>
+                      </div>
+                    </div>
+                    <StatusBadge status={status} />
+                  </div>
+                );
+              })}
+            </div>
           )}
         </div>
-      </div>
 
-      <p className="mt-6 text-xs text-[var(--color-muted)]">
-        TODO: statut entreprise (validation/suspension), plans, demandes d&apos;assistance et
-        activité récente nécessitent de nouvelles tables — non branchés pour l&apos;instant.
-      </p>
+        <div className="rounded-lg border border-[var(--color-border)] bg-white p-4">
+          <h2 className="mb-3 text-sm font-semibold text-[var(--color-navy)]">Alertes récentes</h2>
+          <p className="text-sm text-[var(--color-muted)]">
+            Le fil d&apos;alertes se branche sur la table <code>alerts</code> — module pas encore
+            construit (voir cahier des charges, module 6).
+          </p>
+        </div>
+      </div>
     </div>
   );
 }

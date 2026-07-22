@@ -8,12 +8,14 @@ import {
   FileText,
   Headset,
   Settings,
+  FolderTree,
 } from "lucide-react";
 
 const NAV_ITEMS = [
   { href: "/admin/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
   { href: "/admin/entreprises", label: "Entreprises", icon: Building2 },
   { href: "/admin/appels-offres", label: "Appels d'offres", icon: FileText },
+  { href: "/admin/collectes", label: "Historique de collecte", icon: FolderTree },
   { href: "/admin/assistance-experts", label: "Assistance experts", icon: Headset },
 ];
 
