@@ -15,7 +15,7 @@ const supabase = createClient(
 const TEMP_DIR = "./temp-downloads";
 const CONCURRENCY = 5;
 const STEP_TIMEOUT = 15000;
-const BATCH_SIZE = 180;
+const BATCH_SIZE = 150;
 const EXTENSIONS_UTILES = [".pdf", ".docx", ".doc", ".xlsx", ".xls"];
 const CONTACT = {
   nom: "Safqa",
@@ -68,7 +68,7 @@ async function traiterAO(page, ao) {
 
   const zipBuffer = fs.readFileSync(zipPath);
   const zipStoragePath = `zips/${ao.id}.zip`;
-  await supabase.storage.from("dossiers-consultation").upload(zipStoragePath, zipBffer, {
+  await supabase.storage.from("dossiers-consultation").upload(zipStoragePath, zipBuffer, {
     contentType: "application/zip",
     upsert: true,
   });
