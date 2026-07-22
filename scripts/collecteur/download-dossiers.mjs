@@ -13,8 +13,10 @@ const supabase = createClient(
 );
 
 const TEMP_DIR = "./temp-downloads";
-const CONCURRENCY = 5; // 2 -> 5 : gain direct proportionnel, teste et ajuste si le site rate-limit
-const STEP_TIMEOUT = 15000; // 60s -> 15s : échoue vite plutôt que de bloquer un worker entier
+const CONCURRENCY = 5;
+const STEP_TIMEOUT = 15000;
+const BATCH_SIZE = 150;
+const EXTENSIONS_UTILES = [".pdf", ".docx", ".doc", ".xlsx", ".xls"];
 const CONTACT = {
   nom: "Safqa",
   prenom: "Veille",
@@ -33,6 +35,9 @@ async function traiterAO(page, ao) {
   const lienDossier = await page.$("#ctl0_CONTENU_PAGE_linkDownloadDce");
   if (!lienDossier) {
     console.log(`  → Pas de dossier disponible pour ${ao.reference}`);
+    // On marque quand même comme "traité" pour ne pas re-tenter indéfiniment
+    // un AO qui n'a simplement pas de dossier à télécharger.
+    await supabase.from("ao").update({ dossier_zip_path: "AUCUN" }).eq("id", ao.id);
     return;
   }
   await lienDossier.click();
@@ -68,35 +73,50 @@ async function traiterAO(page, ao) {
     upsert: true,
   });
 
+  // On extrait TOUS les documents utiles du ZIP, pas juste le premier PDF trouvé.
   const zip = new AdmZip(zipPath);
-  const entries = zip.getEntries().filter((e) => e.entryName.toLowerCase().endsWith(".pdf"));
+  const entries = zip.getEntries().filter((e) => {
+    if (e.isDirectory) return false;
+    const nom = e.entryName.toLowerCase();
+    return EXTENSIONS_UTILES.some((ext) => nom.endsWith(ext));
+  });
 
-  let pdfStoragePath = null;
-  if (entries.length > 0) {
-    const pdfBuffer = entries[0].getData();
-    pdfStoragePath = `pdfs/${ao.id}.pdf`;
-    await supabase.storage.from("dossiers-consultation").upload(pdfStoragePath, pdfBuffer, {
-      contentType: "application/pdf",
+  const documentsPaths = [];
+  for (const entry of entries) {
+    const buffer = entry.getData();
+    const nomFichier = entry.entryName.split("/").pop();
+    const storagePath = `documents/${ao.id}/${nomFichier}`;
+    await supabase.storage.from("dossiers-consultation").upload(storagePath, buffer, {
       upsert: true,
+    });
+    documentsPaths.push({
+      nom: nomFichier,
+      path: storagePath,
+      extension: nomFichier.split(".").pop().toLowerCase(),
     });
   }
 
+  const aPdf = documentsPaths.some((d) => d.extension === "pdf");
+  // Garde dossier_pdf_path en compat avec l'existant : premier PDF si dispo, sinon null.
+  const premierPdf = documentsPaths.find((d) => d.extension === "pdf");
+
   await supabase
     .from("ao")
-    .update({ dossier_zip_path: zipStoragePath, dossier_pdf_path: pdfStoragePath })
+    .update({
+      dossier_zip_path: zipStoragePath,
+      dossier_pdf_path: premierPdf ? premierPdf.path : null,
+      dossier_documents: documentsPaths,
+      dossier_a_pdf: aPdf,
+    })
     .eq("id", ao.id);
 
   fs.unlinkSync(zipPath);
-  console.log(`  → OK (${ao.reference}, ${entries.length} PDF)`);
+  console.log(`  → OK (${ao.reference}, ${documentsPaths.length} document(s), PDF: ${aPdf ? "oui" : "non"})`);
 }
 
-// Un "worker" traite une portion de la file, avec son propre contexte de navigateur
 async function worker(browser, queue) {
   const context = await browser.newContext({ acceptDownloads: true });
 
-  // Bloque les ressources inutiles (images, CSS, fonts) -> chaque navigation charge
-  // beaucoup moins de données, donc beaucoup plus vite. On garde le JS car PRADO
-  // en a besoin pour le postback.
   await context.route("**/*", (route) => {
     const type = route.request().resourceType();
     if (["image", "stylesheet", "font", "media"].includes(type)) {
@@ -117,7 +137,7 @@ async function worker(browser, queue) {
     } catch (err) {
       console.error(`  → Erreur ${ao.reference} : ${err.message}`);
     }
-    await delaiAleatoire(800, 1500); // légèrement réduit, ajuste si le site bloque
+    await delaiAleatoire(800, 1500);
   }
 
   await context.close();
@@ -125,12 +145,14 @@ async function worker(browser, queue) {
 
 async function main() {
   if (!fs.existsSync(TEMP_DIR)) fs.mkdirSync(TEMP_DIR);
-  const BATCH_SIZE = 150;
+
+  // Filtre corrigé : dossier_zip_path (toujours rempli une fois traité, PDF ou pas)
+  // plutôt que dossier_pdf_path (qui reste null pour les AOs sans PDF -> boucle infinie sinon).
   const { data: aoList } = await supabase
     .from("ao")
     .select("id, reference, lien_source")
     .not("lien_source", "is", null)
-    .is("dossier_pdf_path", null)
+    .is("dossier_zip_path", null)
     .gte("date_limite_remise_plis", new Date().toISOString())
     .limit(BATCH_SIZE);
 
