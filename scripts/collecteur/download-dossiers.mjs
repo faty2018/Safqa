@@ -125,13 +125,14 @@ async function worker(browser, queue) {
 
 async function main() {
   if (!fs.existsSync(TEMP_DIR)) fs.mkdirSync(TEMP_DIR);
-
+  const BATCH_SIZE = 150;
   const { data: aoList } = await supabase
     .from("ao")
     .select("id, reference, lien_source")
     .not("lien_source", "is", null)
     .is("dossier_pdf_path", null)
-    .gte("date_limite_remise_plis", new Date().toISOString());
+    .gte("date_limite_remise_plis", new Date().toISOString())
+    .limit(BATCH_SIZE);
 
   console.log(`${aoList.length} AO à traiter, avec ${CONCURRENCY} en parallèle.`);
 

@@ -1,14 +1,17 @@
-name: Collecte AO quotidienne
+name: Téléchargement des dossiers DCE
 
 on:
   schedule:
-    - cron: "0 6 * * *"
+    - cron: "30 6 * * *"  # 1er lot, juste après la collecte
+    - cron: "0 10 * * *"  # 2e lot
+    - cron: "0 14 * * *"  # 3e lot
+    - cron: "0 18 * * *"  # 4e lot
   workflow_dispatch:
 
 jobs:
-  collecte:
+  telechargement:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 90 # échoue proprement bien avant la limite de 6h de GitHub
     defaults:
       run:
         working-directory: scripts/collecteur
@@ -28,8 +31,8 @@ jobs:
       - name: Installer Chromium (Playwright)
         run: npx playwright install --with-deps chromium
 
-      - name: Lancer le collecteur
+      - name: Lancer le téléchargement des dossiers
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        run: node collect.mjs
+        run: node download-dossiers.mjs
