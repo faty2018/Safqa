@@ -1,0 +1,32 @@
+name: Analyse IA des AOs (Groq)
+
+on:
+  schedule:
+    # Tous les jours à 3h du matin UTC (4h heure Maroc en hiver, 5h en été)
+    - cron: '0 3 * * *'
+  workflow_dispatch: {} # permet de le lancer manuellement depuis l'onglet Actions
+
+jobs:
+  analyse:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: scripts/collecteur
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Installer les dépendances
+        run: npm install
+
+      - name: Lancer l'analyse
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        run: node analyse-ao-groq.mjs
