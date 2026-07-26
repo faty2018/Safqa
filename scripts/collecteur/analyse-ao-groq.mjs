@@ -149,8 +149,14 @@ Analyse ce dossier et réponds UNIQUEMENT avec un objet JSON valide (pas de mark
 
     } catch (err) {
       tentative++;
-      const isRateLimitTokens = err.status === 413 || (err.status === 429 && err.message?.includes('tokens'));
-      const isRateLimitRequests = err.status === 429 && !isRateLimitTokens;
+      const isQuotaJournaliere = err.message?.includes('tokens per day') || err.message?.includes('TPD');
+      const isRateLimitTokens = !isQuotaJournaliere && (err.status === 413 || (err.status === 429 && err.message?.includes('tokens')));
+      const isRateLimitRequests = err.status === 429 && !isRateLimitTokens && !isQuotaJournaliere;
+
+      if (isQuotaJournaliere) {
+        // Quota journalier épuisé: réduire le texte ne sert à rien, il faut juste arrêter et réessayer demain
+        throw new Error(`Quota journalier Groq épuisé, arrêt du batch: ${err.message}`);
+      }
 
       if (isRateLimitTokens) {
         if (tentative >= maxTentatives) {
@@ -221,9 +227,17 @@ async function traiterAO(ao) {
       .eq('id', ao.id);
 
     console.log(`✓ Analyse terminée pour ${ao.reference}`);
+    return 'ok';
   } catch (err) {
     console.error(`✗ Échec analyse pour ${ao.reference}:`, err.message);
+
+    if (err.message?.includes('Quota journalier Groq épuisé')) {
+      // Pas un vrai échec, juste le quota du jour épuisé: on laisse en non_analyse pour retry demain
+      return 'quota_epuise';
+    }
+
     await supabase.from('ao').update({ statut_analyse: 'echec' }).eq('id', ao.id);
+    return 'echec';
   }
 }
 
@@ -246,7 +260,11 @@ async function main() {
   console.log(`${aosAAnalyser.length} AOs à analyser`);
 
   for (const ao of aosAAnalyser) {
-    await traiterAO(ao);
+    const statut = await traiterAO(ao);
+    if (statut === 'quota_epuise') {
+      console.log('\n⚠ Quota journalier Groq épuisé, arrêt du batch (les AOs restants seront traités demain).');
+      break;
+    }
     // Petite pause pour rester sous le RPM (30 req/min sur le tier gratuit)
     await new Promise(resolve => setTimeout(resolve, 2500));
   }
