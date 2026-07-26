@@ -1,5 +1,5 @@
 {
-  "name": "collecteur",
+  "name": "safqa-groq",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -9,11 +9,13 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
   "dependencies": {
-    "@supabase/supabase-js": "^2.110.5",
-    "adm-zip": "^0.6.0",
+    "@supabase/supabase-js": "^2.110.8",
     "dotenv": "^17.4.2",
-    "playwright": "^1.61.1"
+    "groq-sdk": "^1.4.0",
+    "mammoth": "^1.12.0",
+    "pdf-parse": "^1.1.1",
+    "word-extractor": "^1.0.4",
+    "xlsx": "^0.18.5"
   }
 }

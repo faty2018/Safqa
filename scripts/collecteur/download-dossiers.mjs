@@ -81,10 +81,17 @@ async function traiterAO(page, ao) {
     return EXTENSIONS_UTILES.some((ext) => nom.endsWith(ext));
   });
 
+
+  function nomFichierSain(nom) {
+    return nom
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "") // enlève les accents (é -> e, etc.)
+      .replace(/[^a-zA-Z0-9._-]/g, "_"); // remplace tout caractère spécial restant par _
+  }
   const documentsPaths = [];
   for (const entry of entries) {
     const buffer = entry.getData();
-    const nomFichier = entry.entryName.split("/").pop();
+    const nomFichier = nomFichierSain(entry.entryName.split("/").pop());
     const storagePath = `documents/${ao.id}/${nomFichier}`;
     await supabase.storage.from("dossiers-consultation").upload(storagePath, buffer, {
       upsert: true,
@@ -135,7 +142,9 @@ async function worker(browser, queue) {
     try {
       await traiterAO(page, ao);
     } catch (err) {
-      console.error(`  → Erreur ${ao.reference} : ${err.message}`);
+      console.error(`  → Erreur ${ao.reference}: ${err.message}`);
+      if (err.cause) console.error(`     Cause: ${err.cause}`);
+      await supabase.from("ao").update({ statut_analyse: "echec" }).eq("id", ao.id);
     }
     await delaiAleatoire(800, 1500);
   }
