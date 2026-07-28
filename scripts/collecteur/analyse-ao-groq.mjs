@@ -22,22 +22,64 @@ const supabase = createClient(
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 const BUCKET = 'dossiers-consultation';
-const GROQ_MODEL = 'llama-3.3-70b-versatile'; // ou 'llama-3.1-8b-instant' si tu veux + de débit
+const GROQ_MODEL = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile'; // ou 'llama-3.1-8b-instant' si tu veux + de débit
 const MAX_CHARS_PAR_DOC = 6000; // pour rester safe niveau TPM (12000 tokens/min sur llama-3.3-70b)
 
+
+const PATTERNS_ADMINISTRATIFS = [
+  "acte d'engagement",
+  "declaration sur l'honneur",
+  "declaration de probite",
+  "modele de caution",
+  "cadre du bordereau",
+  "certificat de visite",
+  "attestation de visite des lieux",
+];
+
+const DEBUG_CALIBRAGE = false; // ← passe à false une fois la liste validée
+
+function enleverAccentsMinuscule(str) {
+  return str
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+}
+
+function estDocumentAdministratifPur(texte) {
+  const debut = enleverAccentsMinuscule(texte.slice(0, 300));
+  return PATTERNS_ADMINISTRATIFS.some((pattern) => debut.includes(pattern));
+}
+
+function ratioCaracteresArabes(texte) {
+  const echantillon = texte.slice(0, 2500); // fenêtre plus large pour diluer l'en-tête bilingue
+  const caracteresArabes = (echantillon.match(/[\u0600-\u06FF]/g) || []).length;
+  const caracteresTotal = echantillon.replace(/\s/g, '').length; // on ignore les espaces/sauts de ligne
+  return caracteresArabes / Math.max(caracteresTotal, 1);
+}
+
+function estDocumentEnArabe(texte) {
+  return ratioCaracteresArabes(texte) > 0.5; // majorité du texte en arabe, pas juste l'en-tête
+}
 // --- Extraction par type de fichier ---
 async function extraireTexte(buffer, extension) {
   const ext = extension.toLowerCase();
 
   try {
     if (ext === 'pdf') {
-      const data = await Promise.race([
-        pdfParse(buffer),
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Timeout extraction PDF (30s)')), 30000)
-        )
-      ]);
-      return data.text;
+      const warnOriginal = console.warn;
+      console.warn = () => {}; // silence les warnings internes de pdf.js pendant l'extraction
+
+      try {
+        const data = await Promise.race([
+          pdfParse(buffer),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Timeout extraction PDF (30s)')), 30000)
+          )
+        ]);
+        return data.text;
+      } finally {
+        console.warn = warnOriginal; // restaure console.warn, même si l'extraction plante
+      }
     }
 
     if (ext === 'docx') {
@@ -69,7 +111,6 @@ async function extraireTexte(buffer, extension) {
     return null;
   }
 }
-
 // --- Téléchargement d'un fichier depuis Supabase Storage (avec fallback anti-accents) ---
 function enleverAccents(str) {
   return str
@@ -124,13 +165,14 @@ ${texteActuel}
 Analyse ce dossier et réponds UNIQUEMENT avec un objet JSON valide (pas de markdown, pas de texte autour) avec cette structure exacte:
 {
   "resume": "résumé en 2-3 phrases de l'objet du marché",
-  "criteres_eligibilite": ["critère 1", "critère 2"],
-  "documents_requis": ["document 1", "document 2"],
-  "montant_estimatif": "montant si mentionné, sinon null",
+  "exigences_cles": ["exigence 1 (cautionnement, attestations, moyens humains/techniques...)", "exigence 2", "..."],
+  "montant_estime": "montant en MAD si mentionné, sinon null",
   "delai_execution": "délai si mentionné, sinon null",
-  "points_attention": ["point 1", "point 2"],
-  "score_complexite": "faible|moyen|eleve"
-}`;
+  "score_complexite": "faible|moyen|eleve",
+  "dates_importantes": ["date d'ouverture des plis si mentionnée", "autres dates clés si présentes"]
+}
+
+Pour score_complexite, évalue selon: nombre d'exigences, technicité du marché, montant, délai serré.`;
 
     try {
       const completion = await groq.chat.completions.create({
@@ -140,7 +182,7 @@ Analyse ce dossier et réponds UNIQUEMENT avec un objet JSON valide (pas de mark
           { role: 'user', content: prompt }
         ],
         temperature: 0.2,
-        max_tokens: 1024, // limite explicite pour éviter de consommer tout le budget TPM par défaut
+        max_tokens: 700,
         response_format: { type: 'json_object' }
       });
 
@@ -188,15 +230,41 @@ async function traiterAO(ao) {
   }
 
   let texteConcatene = '';
+  function nettoyerTexte(texte) {
+    return texte
+      .replace(/\n{3,}/g, '\n\n')           // Multiples sauts de ligne → max 2
+      .replace(/[ \t]{2,}/g, ' ')            // Espaces/tabs multiples → 1 espace
+      .replace(/Page \d+ sur \d+/gi, '')     // Pagination répétée
+      .replace(/^\s*[-_=]{3,}\s*$/gm, '')    // Lignes de séparation genre "-----"
+      .trim();
+  }
 
   for (const doc of ao.dossier_documents) {
-    // Adapte selon la structure exacte de ton JSONB dossier_documents
-    // Ex attendu: { path: "...", extension: "pdf", nom: "..." }
     try {
       const buffer = await telechargerFichier(doc.path);
       const texte = await extraireTexte(buffer, doc.extension);
 
       if (texte) {
+        if (DEBUG_CALIBRAGE) {
+          const ratio = ratioCaracteresArabes(texte);
+          console.log(`  [DEBUG] Ratio arabe: ${(ratio * 100).toFixed(1)}%`);
+        }
+
+        const estArabe = estDocumentEnArabe(texte);
+        const estAdmin = estDocumentAdministratifPur(texte);
+        console.log(`  [DEBUG] Arabe: ${estArabe ? 'OUI' : 'non'} | Administratif: ${estAdmin ? 'OUI' : 'non'}`);
+
+        if (estArabe) {
+          console.log(`  → Doc arabe ignoré (doublon FR probable): ${doc.nom || doc.path}`);
+          continue; // on skip entièrement, aucun token consommé
+        }
+
+        if (estAdmin && !DEBUG_CALIBRAGE) {
+          const extraitCourt = texte.slice(0, 500);
+          texteConcatene += `\n\n=== Document (administratif, résumé): ${doc.nom || doc.path} ===\n${extraitCourt}`;
+          continue;
+        }
+
         const texteTronque = texte.slice(0, MAX_CHARS_PAR_DOC);
         texteConcatene += `\n\n=== Document: ${doc.nom || doc.path} ===\n${texteTronque}`;
       }
@@ -204,6 +272,7 @@ async function traiterAO(ao) {
       console.error(`Erreur sur document ${doc.path}:`, err.message);
     }
   }
+
 
   if (!texteConcatene.trim()) {
     await supabase.from('ao').update({ statut_analyse: 'non_analysable' }).eq('id', ao.id);
