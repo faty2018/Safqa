@@ -29,4 +29,5 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GROQ_MODEL: ${{ secrets.GROQ_MODEL }}
         run: node analyse-ao-groq.mjs
