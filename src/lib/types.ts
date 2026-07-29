@@ -28,6 +28,7 @@ export interface AO {
   dateLimiteRemisePlis: string | null; // ISO datetime
   lienSource: string | null;
   createdAt: string;
+  statutAnalyse?: "non_analyse" | "terminee" | "echec" | "non_analysable";
 }
 
 export interface Entreprise {

@@ -3,9 +3,9 @@ name: Téléchargement des dossiers DCE
 on:
   schedule:
     - cron: "30 6 * * *"  # 1er lot, juste après la collecte
-    - cron: "0 10 * * *"  # 2e lot
-    - cron: "0 14 * * *"  # 3e lot
-    - cron: "0 18 * * *"  # 4e lot
+    - cron: "0 12 * * *"  # 2e lot
+    - cron: "0 18 * * *"  # 3e lot
+    - cron: "0 2 * * *"  # 4e lot
   workflow_dispatch:
 
 jobs:

@@ -3,7 +3,7 @@ name: Analyse IA des AOs (Groq)
 on:
   schedule:
     # Tous les jours à 3h du matin UTC (4h heure Maroc en hiver, 5h en été)
-    - cron: '0 3 * * *'
+    - cron: '15 0 * * *'
   workflow_dispatch: {} # permet de le lancer manuellement depuis l'onglet Actions
 
 jobs:

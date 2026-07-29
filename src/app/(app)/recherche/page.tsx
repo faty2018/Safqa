@@ -41,9 +41,8 @@ export default async function RecherchePage({
   const supabase = await createClient();
 
   const selectFields = categorie
-    ? "id, reference, intitule, objet, acheteur_public, montant_estime, date_limite_remise_plis, lien_source, created_at, ao_domaines!inner(domaines!inner(nom))"
-    : "id, reference, intitule, objet, acheteur_public, montant_estime, date_limite_remise_plis, lien_source, created_at";
-
+    ? "id, reference, intitule, objet, acheteur_public, montant_estime, date_limite_remise_plis, lien_source, created_at, statut_analyse, ao_domaines!inner(domaines!inner(nom))"
+    : "id, reference, intitule, objet, acheteur_public, montant_estime, date_limite_remise_plis, lien_source, created_at, statut_analyse";
   function applyFilters(q_: ReturnType<typeof supabase.from>) {
     let query = q_.select(selectFields, { count: "exact" });
 
@@ -112,6 +111,7 @@ export default async function RecherchePage({
     dateLimiteRemisePlis: row.date_limite_remise_plis,
     lienSource: row.lien_source,
     createdAt: row.created_at,
+    statutAnalyse: row.statut_analyse,
   }));
 
   const buildHref = (overrides: Partial<SearchParamsShape>) => {
@@ -169,8 +169,8 @@ export default async function RecherchePage({
                 <Link
                   href={buildHref({ categorie: "", page: "1" })}
                   className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${!categorie
-                      ? "border-[var(--color-navy)] bg-[var(--color-navy)] text-white"
-                      : "border-[var(--color-border)] text-[var(--color-muted)] hover:bg-[var(--color-accent-light)]"
+                    ? "border-[var(--color-navy)] bg-[var(--color-navy)] text-white"
+                    : "border-[var(--color-border)] text-[var(--color-muted)] hover:bg-[var(--color-accent-light)]"
                     }`}
                 >
                   Toutes
@@ -180,8 +180,8 @@ export default async function RecherchePage({
                     key={cat}
                     href={buildHref({ categorie: cat, page: "1" })}
                     className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${categorie === cat
-                        ? "border-[var(--color-navy)] bg-[var(--color-navy)] text-white"
-                        : "border-[var(--color-border)] text-[var(--color-muted)] hover:bg-[var(--color-accent-light)]"
+                      ? "border-[var(--color-navy)] bg-[var(--color-navy)] text-white"
+                      : "border-[var(--color-border)] text-[var(--color-muted)] hover:bg-[var(--color-accent-light)]"
                       }`}
                   >
                     {cat}
@@ -199,8 +199,8 @@ export default async function RecherchePage({
                 <Link
                   href={buildHref({ statut: "", page: "1" })}
                   className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${!statut
-                      ? "border-[var(--color-navy)] bg-[var(--color-navy)] text-white"
-                      : "border-[var(--color-border)] text-[var(--color-muted)] hover:bg-[var(--color-accent-light)]"
+                    ? "border-[var(--color-navy)] bg-[var(--color-navy)] text-white"
+                    : "border-[var(--color-border)] text-[var(--color-muted)] hover:bg-[var(--color-accent-light)]"
                     }`}
                 >
                   Tous
@@ -210,8 +210,8 @@ export default async function RecherchePage({
                     key={s}
                     href={buildHref({ statut: s, page: "1" })}
                     className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${statut === s
-                        ? "border-[var(--color-navy)] bg-[var(--color-navy)] text-white"
-                        : "border-[var(--color-border)] text-[var(--color-muted)] hover:bg-[var(--color-accent-light)]"
+                      ? "border-[var(--color-navy)] bg-[var(--color-navy)] text-white"
+                      : "border-[var(--color-border)] text-[var(--color-muted)] hover:bg-[var(--color-accent-light)]"
                       }`}
                   >
                     {STATUT_LABELS[s]}
@@ -278,13 +278,20 @@ export default async function RecherchePage({
                         )}
                         <div className="flex items-center gap-1.5">
                           <StatusBadge status={status} />
+                          {ao.statutAnalyse === "terminee" && (
+                            <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
+                              Analysé IA
+                            </span>
+                          )}
                           <FollowButton aoId={ao.id} initialFollowing={suivisIds.has(ao.id)} />
                         </div>
                       </div>
 
-                      <h3 className="mb-2 line-clamp-2 text-sm font-semibold leading-snug text-[var(--color-navy)]">
-                        {ao.intitule}
-                      </h3>
+                      <Link href={`/recherche/${ao.id}`}>
+                        <h3 className="mb-2 line-clamp-2 text-sm font-semibold leading-snug text-[var(--color-navy)] hover:underline">
+                          {ao.intitule}
+                        </h3>
+                      </Link>
 
                       <div className="mb-3 flex items-start gap-1.5 text-xs text-[var(--color-muted)]">
                         <Building2 size={13} className="mt-0.5 shrink-0" />
@@ -331,8 +338,8 @@ export default async function RecherchePage({
                       href={buildHref({ page: String(Math.max(1, page - 1)) })}
                       aria-disabled={page <= 1}
                       className={`flex items-center gap-1 rounded-md border border-[var(--color-border)] px-3 py-1.5 text-xs font-medium ${page <= 1
-                          ? "pointer-events-none opacity-40"
-                          : "text-[var(--color-navy)] hover:bg-[var(--color-accent-light)]"
+                        ? "pointer-events-none opacity-40"
+                        : "text-[var(--color-navy)] hover:bg-[var(--color-accent-light)]"
                         }`}
                     >
                       <ChevronLeft size={14} /> Précédent
@@ -341,8 +348,8 @@ export default async function RecherchePage({
                       href={buildHref({ page: String(Math.min(totalPages, page + 1)) })}
                       aria-disabled={page >= totalPages}
                       className={`flex items-center gap-1 rounded-md border border-[var(--color-border)] px-3 py-1.5 text-xs font-medium ${page >= totalPages
-                          ? "pointer-events-none opacity-40"
-                          : "text-[var(--color-navy)] hover:bg-[var(--color-accent-light)]"
+                        ? "pointer-events-none opacity-40"
+                        : "text-[var(--color-navy)] hover:bg-[var(--color-accent-light)]"
                         }`}
                     >
                       Suivant <ChevronRight size={14} />
