@@ -67,7 +67,7 @@ async function extraireTexte(buffer, extension) {
   try {
     if (ext === 'pdf') {
       const warnOriginal = console.warn;
-      console.warn = () => {}; // silence les warnings internes de pdf.js pendant l'extraction
+      console.warn = () => { }; // silence les warnings internes de pdf.js pendant l'extraction
 
       try {
         const data = await Promise.race([
@@ -191,6 +191,8 @@ Pour score_complexite, évalue selon: nombre d'exigences, technicité du marché
 
     } catch (err) {
       tentative++;
+      console.error(`  [DEBUG] Erreur brute Groq: ${err.message}`); // ← ajouté pour diagnostiquer
+
       const isQuotaJournaliere = err.message?.includes('tokens per day') || err.message?.includes('TPD');
       const isRateLimitTokens = !isQuotaJournaliere && (err.status === 413 || (err.status === 429 && err.message?.includes('tokens')));
       const isRateLimitRequests = err.status === 429 && !isRateLimitTokens && !isQuotaJournaliere;
@@ -319,7 +321,7 @@ async function main() {
     .not('dossier_zip_path', 'is', null) // ton indicateur "déjà traité/téléchargé"
     .not('dossier_documents', 'is', null)
     .order('created_at', { ascending: false })
-    .limit(50); // ~50 AOs/jour, cohérent avec le quota gratuit Groq (100k tokens/jour)
+    .limit(150); // ~50 AOs/jour, cohérent avec le quota gratuit Groq (100k tokens/jour)
 
   if (error) {
     console.error('Erreur récupération AOs:', error.message);
