@@ -221,8 +221,63 @@ Pour score_complexite, évalue selon: nombre d'exigences, technicité du marché
   }
 }
 
+
+function decouperTexte(texte, tailleMax) {
+  if (texte.length <= tailleMax) return [texte];
+
+  const morceaux = [];
+  let reste = texte;
+  while (reste.length > 0) {
+    morceaux.push(reste.slice(0, tailleMax));
+    reste = reste.slice(tailleMax);
+  }
+  return morceaux;
+}
+
+function fusionnerAnalyses(resultats) {
+  // resultats = tableau de JSON générés sur chaque morceau
+  const exigencesFusionnees = [
+    ...new Set(resultats.flatMap((r) => r.exigences_cles || [])),
+  ];
+  const datesFusionnees = [
+    ...new Set(resultats.flatMap((r) => r.dates_importantes || [])),
+  ];
+
+  return {
+    resume: resultats.map((r) => r.resume).filter(Boolean).join(' '),
+    exigences_cles: exigencesFusionnees,
+    montant_estime: resultats.find((r) => r.montant_estime)?.montant_estime ?? null,
+    delai_execution: resultats.find((r) => r.delai_execution)?.delai_execution ?? null,
+    score_complexite: resultats.find((r) => r.score_complexite)?.score_complexite ?? null,
+    dates_importantes: datesFusionnees,
+  };
+}
+
+async function analyserDocumentComplet(texteComplet, aoInfo, tailleMax) {
+  const morceaux = decouperTexte(texteComplet, tailleMax);
+
+  if (morceaux.length === 1) {
+    return await analyserAvecGroq(morceaux[0], aoInfo);
+  }
+
+  console.log(`  Texte trop long, découpé en ${morceaux.length} parties`);
+  const resultats = [];
+  for (let i = 0; i < morceaux.length; i++) {
+    console.log(`  → Analyse de la partie ${i + 1}/${morceaux.length}`);
+    const resultat = await analyserAvecGroq(morceaux[i], {
+      ...aoInfo,
+      // on précise dans le prompt que c'est un extrait partiel, pas le doc entier
+      reference: `${aoInfo.reference} (partie ${i + 1}/${morceaux.length})`,
+    });
+    resultats.push(resultat);
+    await new Promise((resolve) => setTimeout(resolve, 2000)); // pause entre les morceaux
+  }
+
+  return fusionnerAnalyses(resultats);
+}
 // --- Traitement d'un AO ---
 async function traiterAO(ao) {
+
   console.log(`\n=== Traitement AO ${ao.reference} ===`);
 
   if (!ao.dossier_documents || ao.dossier_documents.length === 0) {
@@ -241,33 +296,36 @@ async function traiterAO(ao) {
       .trim();
   }
 
+
   for (const doc of ao.dossier_documents) {
     try {
       const buffer = await telechargerFichier(doc.path);
       const texte = await extraireTexte(buffer, doc.extension);
 
       if (texte) {
+        const texteNettoye = nettoyerTexte(texte); // ← activé ici
+
         if (DEBUG_CALIBRAGE) {
-          const ratio = ratioCaracteresArabes(texte);
+          const ratio = ratioCaracteresArabes(texteNettoye);
           console.log(`  [DEBUG] Ratio arabe: ${(ratio * 100).toFixed(1)}%`);
         }
 
-        const estArabe = estDocumentEnArabe(texte);
-        const estAdmin = estDocumentAdministratifPur(texte);
+        const estArabe = estDocumentEnArabe(texteNettoye);
+        const estAdmin = estDocumentAdministratifPur(texteNettoye);
         console.log(`  [DEBUG] Arabe: ${estArabe ? 'OUI' : 'non'} | Administratif: ${estAdmin ? 'OUI' : 'non'}`);
 
         if (estArabe) {
           console.log(`  → Doc arabe ignoré (doublon FR probable): ${doc.nom || doc.path}`);
-          continue; // on skip entièrement, aucun token consommé
+          continue;
         }
 
         if (estAdmin && !DEBUG_CALIBRAGE) {
-          const extraitCourt = texte.slice(0, 500);
+          const extraitCourt = texteNettoye.slice(0, 500);
           texteConcatene += `\n\n=== Document (administratif, résumé): ${doc.nom || doc.path} ===\n${extraitCourt}`;
           continue;
         }
 
-        const texteTronque = texte.slice(0, MAX_CHARS_PAR_DOC);
+        const texteTronque = texteNettoye.slice(0, MAX_CHARS_PAR_DOC);
         texteConcatene += `\n\n=== Document: ${doc.nom || doc.path} ===\n${texteTronque}`;
       }
     } catch (err) {
@@ -282,11 +340,12 @@ async function traiterAO(ao) {
     return;
   }
 
-  // Sécurité globale sur la taille totale envoyée à Groq (TPM)
-  const texteFinal = texteConcatene.slice(0, 30000); // ~7500 tokens, marge de sécurité sous 12000 TPM
+  // Découpage : plus de troncature aveugle, on garde tout le texte et on le split si besoin
+  const MAX_CHARS_TOTAL = GROQ_MODEL.includes('8b') ? 14000 : 30000;
+  const texteFinal = texteConcatene; // on n'écrête plus ici, decouperTexte s'en charge
 
   try {
-    const analyse = await analyserAvecGroq(texteFinal, ao);
+    const analyse = await analyserDocumentComplet(texteFinal, ao, MAX_CHARS_TOTAL);
 
     await supabase
       .from('ao')
