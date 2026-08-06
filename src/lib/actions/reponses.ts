@@ -6,13 +6,13 @@ import { redirect } from "next/navigation";
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-export async function genererTrameReponse(aoId: string) {
+export async function genererTrameReponse(aoId: string, forcerRegeneration = false) {
   const supabase = await createClient();
 
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) throw new Error("Non authentifié");
+  if (!user) return { error: "Non authentifié" };
 
   const { data: profile } = await supabase
     .from("utilisateurs")
@@ -20,7 +20,21 @@ export async function genererTrameReponse(aoId: string) {
     .eq("id", user.id)
     .single();
 
-  if (!profile?.entreprise_id) throw new Error("Entreprise introuvable");
+  if (!profile?.entreprise_id) return { error: "Entreprise introuvable" };
+
+  // Vérifie si une réponse existe déjà, pour éviter d'écraser un brouillon édité
+  if (!forcerRegeneration) {
+    const { data: existante } = await supabase
+      .from("reponses")
+      .select("id, statut")
+      .eq("ao_id", aoId)
+      .eq("entreprise_id", profile.entreprise_id)
+      .maybeSingle();
+
+    if (existante) {
+      return { existeDeja: true, reponseId: existante.id };
+    }
+  }
 
   const { data: ao } = await supabase
     .from("ao")
@@ -28,7 +42,7 @@ export async function genererTrameReponse(aoId: string) {
     .eq("id", aoId)
     .single();
 
-  if (!ao) throw new Error("AO introuvable");
+  if (!ao) return { error: "AO introuvable" };
 
   const entreprise = Array.isArray(profile.entreprises)
     ? profile.entreprises[0]
@@ -36,12 +50,11 @@ export async function genererTrameReponse(aoId: string) {
 
   const analyse = ao.analyse_json as any;
 
-  // Nouveau : récupération du profil entreprise détaillé
   const { data: entrepriseProfil } = await supabase
     .from("entreprise_profils")
     .select("*")
     .eq("entreprise_id", profile.entreprise_id)
-    .single();
+    .maybeSingle();
 
   const prompt = `Tu es un expert en rédaction de réponses aux appels d'offres publics marocains.
 
@@ -49,6 +62,8 @@ Marché : ${ao.intitule}
 Acheteur : ${ao.acheteur_public}
 Résumé : ${ao.analyse_resume ?? ""}
 Exigences clés : ${(analyse?.exigences_cles ?? []).join("; ")}
+Délai d'exécution demandé : ${analyse?.delai_execution ?? "Non précisé"}
+Montant estimé du marché : ${analyse?.montant_estime ?? "Non précisé"}
 
 Entreprise candidate : ${entreprise?.raison_sociale}
 Description de l'activité : ${entrepriseProfil?.description ?? "Non renseignée"}
@@ -70,18 +85,27 @@ Génère une trame de réponse structurée. Réponds UNIQUEMENT en JSON valide :
 
 Sections : Présentation de l'entreprise, Compréhension du besoin, Méthodologie proposée, Moyens humains et matériels mobilisés, Références similaires, Planning d'exécution.`;
 
-  const completion = await groq.chat.completions.create({
-    model: "llama-3.3-70b-versatile",
-    messages: [
-      { role: "system", content: "Tu réponds uniquement en JSON valide, sans markdown." },
-      { role: "user", content: prompt },
-    ],
-    temperature: 0.4,
-    max_tokens: 2048,
-    response_format: { type: "json_object" },
-  });
+  let trame;
+  try {
+    const completion = await groq.chat.completions.create({
+      model: "llama-3.3-70b-versatile",
+      messages: [
+        { role: "system", content: "Tu réponds uniquement en JSON valide, sans markdown." },
+        { role: "user", content: prompt },
+      ],
+      temperature: 0.4,
+      max_tokens: 2048,
+      response_format: { type: "json_object" },
+    });
 
-  const trame = JSON.parse(completion.choices[0].message.content!);
+    const content = completion.choices[0]?.message?.content;
+    if (!content) return { error: "Réponse vide de l'IA, réessayez" };
+
+    trame = JSON.parse(content);
+  } catch (err) {
+    console.error("Erreur génération Groq:", err);
+    return { error: "Échec de la génération IA, réessayez dans quelques instants" };
+  }
 
   const { data: reponse, error } = await supabase
     .from("reponses")
@@ -98,7 +122,28 @@ Sections : Présentation de l'entreprise, Compréhension du besoin, Méthodologi
     .select("id")
     .single();
 
-  if (error) throw new Error(error.message);
+  if (error) return { error: error.message };
 
   redirect(`/reponses/${reponse.id}`);
+}
+
+export async function sauvegarderReponse(reponseId: string, trameJson: any) {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Non authentifié" };
+
+  const { error } = await supabase
+    .from("reponses")
+    .update({
+      trame_json: trameJson,
+      statut: "brouillon",
+      modifie_le: new Date().toISOString(),
+    })
+    .eq("id", reponseId);
+
+  if (error) return { error: error.message };
+  return { success: true };
 }

@@ -23,13 +23,14 @@ export default async function ParametresPage() {
     .eq('id', monProfil.entreprise_id)
     .single()
 
-  const { data: membres } = isAdmin
+  const { data: membres, error: membresError } = isAdmin
     ? await supabase
-        .from('utilisateurs')
-        .select('*')
-        .eq('entreprise_id', monProfil.entreprise_id)
-        .order('created_at', { ascending: true })
-    : { data: null }
+      .from('utilisateurs')
+      .select('*')
+      .eq('entreprise_id', monProfil.entreprise_id)
+    : { data: null, error: null }
+
+  if (membresError) console.error('Erreur fetch membres:', membresError.message)
 
   return (
     <div className="max-w-4xl mx-auto p-8">

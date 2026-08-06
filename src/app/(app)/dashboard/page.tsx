@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { deriveStatus, type AO } from "@/lib/types";
 import { ArrowRight, Bookmark, Building2 } from "lucide-react";
+import { NouveauxAOChart } from "@/components/dashboard/NouveauxAOChart";
+import { RepartitionSecteursChart } from "@/components/dashboard/RepartitionSecteursChart";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -22,32 +24,83 @@ export default async function DashboardPage() {
   }
 
   const seDaysAgo = new Date(Date.now() - 7 * 86_400_000).toISOString();
+  const trenteDaysAgo = new Date(Date.now() - 30 * 86_400_000).toISOString();
 
-  const [{ count: suivisCount }, { count: nouveauxCount }, { data: suivisRecents }] =
-    await Promise.all([
-      entrepriseId
-        ? supabase
-            .from("ao_suivis")
-            .select("*", { count: "exact", head: true })
-            .eq("entreprise_id", entrepriseId)
-        : Promise.resolve({ count: 0 }),
-      supabase
-        .from("ao")
-        .select("*", { count: "exact", head: true })
-        .gte("created_at", seDaysAgo),
-      entrepriseId
-        ? supabase
-            .from("ao_suivis")
-            .select(
-              "date_ajout, ao(id, reference, intitule, acheteur_public, date_limite_remise_plis, lien_source)"
-            )
-            .eq("entreprise_id", entrepriseId)
-            .order("date_ajout", { ascending: false })
-            .limit(5)
-        : Promise.resolve({ data: [] }),
-    ]);
+  const [
+    { count: suivisCount },
+    { count: nouveauxCount },
+    { data: suivisRecents },
+    { count: reponsesEnCours },
+    { data: aoRecents30j },
+    { data: suivisAvecDomaines },
+  ] = await Promise.all([
+    entrepriseId
+      ? supabase
+          .from("ao_suivis")
+          .select("*", { count: "exact", head: true })
+          .eq("entreprise_id", entrepriseId)
+      : Promise.resolve({ count: 0 }),
+    supabase
+      .from("ao")
+      .select("*", { count: "exact", head: true })
+      .gte("created_at", seDaysAgo),
+    entrepriseId
+      ? supabase
+          .from("ao_suivis")
+          .select(
+            "date_ajout, ao(id, reference, intitule, acheteur_public, date_limite_remise_plis, lien_source)"
+          )
+          .eq("entreprise_id", entrepriseId)
+          .order("date_ajout", { ascending: false })
+          .limit(5)
+      : Promise.resolve({ data: [] }),
+    entrepriseId
+      ? supabase
+          .from("reponses")
+          .select("*", { count: "exact", head: true })
+          .eq("entreprise_id", entrepriseId)
+          .eq("statut", "brouillon")
+      : Promise.resolve({ count: 0 }),
+    supabase
+      .from("ao")
+      .select("created_at")
+      .gte("created_at", trenteDaysAgo),
+    entrepriseId
+      ? supabase
+          .from("ao_suivis")
+          .select("ao(ao_domaines(domaines(nom)))")
+          .eq("entreprise_id", entrepriseId)
+      : Promise.resolve({ data: [] }),
+  ]);
 
   const suivis = (suivisRecents ?? []) as any[];
+
+  // Regroupement des nouveaux AO par jour (30 derniers jours)
+  const compteParJour: Record<string, number> = {};
+  (aoRecents30j ?? []).forEach((row: any) => {
+    const jour = new Date(row.created_at).toISOString().slice(0, 10);
+    compteParJour[jour] = (compteParJour[jour] ?? 0) + 1;
+  });
+  const evolutionData = Object.entries(compteParJour)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, count]) => ({
+      date: new Date(date).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" }),
+      count,
+    }));
+
+  // Répartition des AO suivis par secteur/domaine
+  const compteParSecteur: Record<string, number> = {};
+  ((suivisAvecDomaines ?? []) as any[]).forEach((s) => {
+    const domaines = s.ao?.ao_domaines ?? [];
+    domaines.forEach((d: any) => {
+      const nom = d.domaines?.nom ?? "Non catégorisé";
+      compteParSecteur[nom] = (compteParSecteur[nom] ?? 0) + 1;
+    });
+  });
+  const secteursData = Object.entries(compteParSecteur).map(([nom, value]) => ({
+    nom,
+    value,
+  }));
 
   return (
     <div className="space-y-6">
@@ -88,11 +141,41 @@ export default async function DashboardPage() {
           <p className="text-xs font-medium uppercase text-[var(--color-muted)]">
             Réponses en cours
           </p>
-          <p className="mt-2 text-2xl font-semibold text-[var(--color-muted)]">—</p>
+          <p className="mt-2 text-2xl font-semibold text-[var(--color-navy)]">
+            {reponsesEnCours ?? 0}
+          </p>
         </div>
         <div className="rounded-lg border border-[var(--color-navy)] bg-[var(--color-navy)] p-4">
           <p className="text-xs font-medium uppercase text-white/70">Alertes non lues</p>
           <p className="mt-2 text-2xl font-semibold text-white">—</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div className="rounded-lg border border-[var(--color-border)] bg-white p-4">
+          <h2 className="mb-3 text-sm font-semibold text-[var(--color-navy)]">
+            Nouveaux AO collectés (30 derniers jours)
+          </h2>
+          {evolutionData.length > 0 ? (
+            <NouveauxAOChart data={evolutionData} />
+          ) : (
+            <p className="text-sm text-[var(--color-muted)] py-10 text-center">
+              Pas de données sur cette période.
+            </p>
+          )}
+        </div>
+
+        <div className="rounded-lg border border-[var(--color-border)] bg-white p-4">
+          <h2 className="mb-3 text-sm font-semibold text-[var(--color-navy)]">
+            AO suivis par secteur
+          </h2>
+          {secteursData.length > 0 ? (
+            <RepartitionSecteursChart data={secteursData} />
+          ) : (
+            <p className="text-sm text-[var(--color-muted)] py-10 text-center">
+              Aucun AO suivi pour l&apos;instant.
+            </p>
+          )}
         </div>
       </div>
 

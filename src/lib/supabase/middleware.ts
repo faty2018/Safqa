@@ -33,7 +33,10 @@ export async function updateSession(request: NextRequest) {
   const isAuthRoute =
     request.nextUrl.pathname.startsWith("/login") ||
     request.nextUrl.pathname.startsWith("/signup");
-  const isPublicRoute = isAuthRoute;
+  const isInvitationRoute = request.nextUrl.pathname.startsWith("/auth/accepter-invitation");
+
+  const isPublicRoute = isAuthRoute || isInvitationRoute;
+
 
   // Pas connecté et route protégée → login
   if (!user && !isPublicRoute) {
