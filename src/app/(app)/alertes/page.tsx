@@ -1,4 +1,10 @@
-export default function AlertesPage() {
+import { getNotifications } from "@/lib/actions/notifications";
+import { ListeNotifications } from "@/components/alertes/ListeNotifications";
+import { BoutonToutMarquerLu } from "@/components/alertes/BoutonToutMarquerLu";
+
+export default async function AlertesPage() {
+  const notifications = await getNotifications();
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -8,15 +14,10 @@ export default function AlertesPage() {
             Restez informé des échéances et opportunités critiques.
           </p>
         </div>
-        <button className="text-sm text-[var(--color-accent)]">Tout marquer comme lu</button>
+        <BoutonToutMarquerLu />
       </div>
 
-      <div className="rounded-lg border border-[var(--color-border)] bg-white p-4">
-        <p className="text-sm text-[var(--color-muted)]">
-          TODO: fil chronologique — types &quot;echeance&quot;, &quot;mise_a_jour_marche&quot;,
-          &quot;correspondance_ia&quot; (voir <code>AlertType</code> dans lib/types.ts).
-        </p>
-      </div>
+      <ListeNotifications notifications={notifications} />
     </div>
   );
 }

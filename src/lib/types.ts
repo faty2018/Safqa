@@ -61,3 +61,33 @@ export function deriveStatus(ao: AO): TenderStatus {
   const joursRestants = (limite.getTime() - now.getTime()) / 86_400_000;
   return joursRestants <= 7 ? "en_cours" : "nouveau";
 }
+
+
+export type TypeNotification = "nouvelle_correspondance" | "changement_statut";
+
+export interface NotificationAlerte {
+  id: string;
+  utilisateurId: string;
+  aoId: string;
+  type: TypeNotification;
+  alerteCritereId: string | null;
+  titre: string;
+  message: string | null;
+  lu: boolean;
+  emailEnvoye: boolean;
+  createdAt: string; // ISO datetime
+}
+
+export interface AlerteCritere {
+  id: string;
+  entrepriseId: string;
+  utilisateurId: string;
+  nom: string;
+  motsCles: string[];
+  domaineIds: string[];
+  montantMin: number | null;
+  montantMax: number | null;
+  canal: "email" | "inapp" | "email_et_inapp";
+  actif: boolean;
+  createdAt: string;
+}

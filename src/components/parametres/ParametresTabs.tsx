@@ -4,6 +4,7 @@ import { useState } from 'react'
 import MonCompte from './MonCompte'
 import ProfilEntreprise from './ProfilEntreprise'
 import MembresEquipe from './MembresEquipe'
+import GestionAlertes from './GestionAlertes'
 
 type Props = {
   currentUser: any
@@ -17,6 +18,7 @@ export default function ParametresTabs({ currentUser, entreprise, membres, isAdm
     { id: 'compte', label: 'Mon compte' },
     { id: 'entreprise', label: 'Profil entreprise' },
     ...(isAdmin ? [{ id: 'equipe', label: "Membres de l'équipe" }] : []),
+    { id: 'alertes', label: 'Alertes' },
   ] as const
 
   const [active, setActive] = useState<string>('compte')
@@ -50,6 +52,7 @@ export default function ParametresTabs({ currentUser, entreprise, membres, isAdm
           entrepriseId={currentUser.entreprise_id}
         />
       )}
+      {active === 'alertes' && <GestionAlertes />}
     </div>
   )
 }

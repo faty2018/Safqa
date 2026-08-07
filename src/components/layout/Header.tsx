@@ -1,13 +1,15 @@
 "use client";
 
+import Link from "next/link";
 import { Search, Bell, Headset, LogOut } from "lucide-react";
 
 interface HeaderProps {
   companyName: string;
   userName: string;
+  nombreNotificationsNonLues?: number;
 }
 
-export function Header({ companyName, userName }: HeaderProps) {
+export function Header({ companyName, userName, nombreNotificationsNonLues = 0 }: HeaderProps) {
   async function handleSignOut() {
     await fetch("/signout", { method: "POST" });
     window.location.href = "/login";
@@ -31,12 +33,18 @@ export function Header({ companyName, userName }: HeaderProps) {
         >
           <Headset size={20} />
         </button>
-        <button
+        <Link
+          href="/alertes"
           aria-label="Notifications"
-          className="text-[var(--color-muted)] hover:text-[var(--color-navy)]"
+          className="relative text-[var(--color-muted)] hover:text-[var(--color-navy)]"
         >
           <Bell size={20} />
-        </button>
+          {nombreNotificationsNonLues > 0 && (
+            <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-medium text-white">
+              {nombreNotificationsNonLues > 9 ? "9+" : nombreNotificationsNonLues}
+            </span>
+          )}
+        </Link>
         <div className="flex items-center gap-2 border-l border-[var(--color-border)] pl-4">
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--color-navy)] text-xs font-medium text-white">
             {userName

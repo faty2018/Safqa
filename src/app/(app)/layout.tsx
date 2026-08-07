@@ -1,10 +1,8 @@
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { createClient } from "@/lib/supabase/server";
+import { getNombreNotificationsNonLues } from "@/lib/actions/notifications";
 
-// L'auth est déjà vérifiée par proxy.ts (redirige vers /login si pas
-// connecté), donc ici `user` est garanti non-null en pratique. On refait
-// quand même l'appel côté serveur pour récupérer nom/entreprise à afficher.
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
   const {
@@ -23,7 +21,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
     if (profile) {
       userName = profile.nom;
-      // La jointure Supabase renvoie un objet (ou tableau selon la relation) — on gère les deux.
       const entreprise = Array.isArray(profile.entreprises)
         ? profile.entreprises[0]
         : profile.entreprises;
@@ -31,11 +28,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     }
   }
 
+  const nombreNonLues = await getNombreNotificationsNonLues();
+
   return (
     <div className="flex h-screen overflow-hidden">
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
-        <Header companyName={companyName} userName={userName} />
+        <Header companyName={companyName} userName={userName} nombreNotificationsNonLues={nombreNonLues} />
         <main className="flex-1 overflow-y-auto bg-[var(--background)] p-6">
           {children}
         </main>
