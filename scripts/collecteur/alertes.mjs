@@ -47,8 +47,11 @@ function critereMatch(ao, critere, domaineIdsParAo) {
         if (!match) return false;
     }
 
-    async function main() {
-        console.log('--- Démarrage du script alertes ---');
+    return auMoinsUnFiltre;
+}
+
+async function main() {
+    console.log('--- Démarrage du script alertes ---');
 
         // 1. Dernière collecte
         const { data: derniereCollecte, error: errCollecte } = await supabase
