@@ -73,9 +73,10 @@ export interface NotificationAlerte {
   alerteCritereId: string | null;
   titre: string;
   message: string | null;
+  dateLimiteOffre: string | null;   // <-- ajout
   lu: boolean;
   emailEnvoye: boolean;
-  createdAt: string; // ISO datetime
+  createdAt: string;
 }
 
 export interface AlerteCritere {

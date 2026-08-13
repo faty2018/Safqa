@@ -1,13 +1,28 @@
-export default function ExpertHistoriquePage() {
+import { listerHistorique } from "@/lib/actions/demandes-experts";
+import { DemandesStaffTable } from "@/components/assistance-experts/DemandesStaffTable";
+
+export default async function ExpertHistoriquePage() {
+  const { data: demandes, error } = await listerHistorique();
+
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-[var(--color-navy)]">Historique</h1>
+      <h1 className="text-2xl font-semibold text-[var(--color-navy)]">
+        Historique
+      </h1>
       <p className="mt-1 text-sm text-[var(--color-muted)]">
         Demandes traitées précédemment.
       </p>
-      <p className="mt-6 text-sm text-[var(--color-muted)]">
-        TODO: brancher sur Supabase.
-      </p>
+
+      {error ? (
+        <p className="mt-6 text-sm text-red-600">
+          Erreur lors du chargement : {error}
+        </p>
+      ) : (
+        <DemandesStaffTable
+          demandesInitiales={demandes ?? []}
+          emptyMessage="Aucune demande résolue pour le moment."
+        />
+      )}
     </div>
   );
 }

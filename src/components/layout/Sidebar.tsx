@@ -17,7 +17,6 @@ import {
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
   { href: "/recherche", label: "Recherche & Filtrage", icon: Search },
-  { href: "/analyse-ia", label: "Analyse IA", icon: Sparkles },
   { href: "/reponses", label: "Réponses", icon: FileText },
   { href: "/assistance-experts", label: "Assistance experts", icon: Headset },
   { href: "/alertes", label: "Alertes", icon: Bell },

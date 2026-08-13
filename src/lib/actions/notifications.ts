@@ -13,6 +13,7 @@ function mapNotification(row: any): NotificationAlerte {
     alerteCritereId: row.alerte_critere_id,
     titre: row.titre,
     message: row.message,
+    dateLimiteOffre: row.date_limite_offre,   // <-- ajout
     lu: row.lu,
     emailEnvoye: row.email_envoye,
     createdAt: row.created_at,

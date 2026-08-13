@@ -2,6 +2,7 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { createClient } from "@/lib/supabase/server";
 import { getNombreNotificationsNonLues } from "@/lib/actions/notifications";
+import { ChatbotWidget } from "@/components/chatbot/ChatbotWidget";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
@@ -39,6 +40,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           {children}
         </main>
       </div>
+      <ChatbotWidget />
     </div>
   );
 }

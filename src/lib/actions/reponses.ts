@@ -147,3 +147,27 @@ export async function sauvegarderReponse(reponseId: string, trameJson: any) {
   if (error) return { error: error.message };
   return { success: true };
 }
+
+
+export async function listerMesReponses() {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("reponses")
+    .select(
+      `
+      id,
+      statut,
+      updated_at,
+      ao_id,
+      ao:ao_id ( intitule, date_limite_remise_plis )
+    `
+    )
+    .order("updated_at", { ascending: false });
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  return { data };
+}

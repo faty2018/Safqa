@@ -34,7 +34,6 @@ function construireTexteRecherche(ao) {
 function critereMatch(ao, critere, domaineIdsParAo) {
   let auMoinsUnFiltre = false;
 
-  // Mots-clés
   if (critere.mots_cles && critere.mots_cles.length > 0) {
     auMoinsUnFiltre = true;
     const texteAo = construireTexteRecherche(ao);
@@ -42,7 +41,6 @@ function critereMatch(ao, critere, domaineIdsParAo) {
     if (!match) return false;
   }
 
-  // Secteurs (domaines)
   if (critere.domaine_ids && critere.domaine_ids.length > 0) {
     auMoinsUnFiltre = true;
     const domainesAo = domaineIdsParAo.get(ao.id) || [];
@@ -50,13 +48,11 @@ function critereMatch(ao, critere, domaineIdsParAo) {
     if (!match) return false;
   }
 
-  // Montant min
   if (critere.montant_min != null) {
     auMoinsUnFiltre = true;
     if (ao.montant_estime == null || ao.montant_estime < critere.montant_min) return false;
   }
 
-  // Montant max
   if (critere.montant_max != null) {
     auMoinsUnFiltre = true;
     if (ao.montant_estime == null || ao.montant_estime > critere.montant_max) return false;
@@ -65,14 +61,20 @@ function critereMatch(ao, critere, domaineIdsParAo) {
   return auMoinsUnFiltre;
 }
 
+function formaterDateCourte(iso) {
+  if (!iso) return null;
+  return new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
 function construireEmailHtml(nomUtilisateur, notifs) {
   const MAX_AFFICHES = 5;
   const notifsAffichees = notifs.slice(0, MAX_AFFICHES);
   const nombreRestant = notifs.length - notifsAffichees.length;
 
   const cartesHtml = notifsAffichees
-    .map(
-      (n) => `
+    .map((n) => {
+      const dateLimite = formaterDateCourte(n.date_limite_offre);
+      return `
     <tr>
       <td style="padding: 16px 20px; border-bottom: 1px solid #E2E8F0;">
         <p style="margin: 0; font-size: 14px; font-weight: 600; color: #0F2A4A; line-height: 1.4;">
@@ -81,9 +83,13 @@ function construireEmailHtml(nomUtilisateur, notifs) {
         <p style="margin: 4px 0 0; font-size: 13px; color: #64748B; line-height: 1.4;">
           ${(n.message || '').split('. ')[1] || ''}
         </p>
+        ${dateLimite
+          ? `<p style="margin: 6px 0 0; font-size: 12px; color: #B45309; font-weight: 600;">Date limite : ${dateLimite}</p>`
+          : ''
+        }
       </td>
-    </tr>`
-    )
+    </tr>`;
+    })
     .join('');
 
   return `
@@ -116,11 +122,10 @@ function construireEmailHtml(nomUtilisateur, notifs) {
                 <table width="100%" cellpadding="0" cellspacing="0" style="border: 1px solid #E2E8F0; border-radius: 6px; overflow: hidden;">
                   ${cartesHtml}
                 </table>
-                ${
-                  nombreRestant > 0
-                    ? `<p style="margin: 12px 0 0; font-size: 13px; color: #64748B; text-align: center;">+ ${nombreRestant} autre(s) AO correspondant(s)</p>`
-                    : ''
-                }
+                ${nombreRestant > 0
+      ? `<p style="margin: 12px 0 0; font-size: 13px; color: #64748B; text-align: center;">+ ${nombreRestant} autre(s) AO correspondant(s)</p>`
+      : ''
+    }
               </td>
             </tr>
 
@@ -152,45 +157,45 @@ function construireEmailHtml(nomUtilisateur, notifs) {
 async function main() {
   console.log('--- Démarrage du script alertes ---');
 
-  // 1. Dernière collecte
-  const { data: derniereCollecte, error: errCollecte } = await supabase
-    .from('collectes')
-    .select('id, date_collecte')
-    .order('created_at', { ascending: false })
-    .limit(1)
+  // 1. Dernière exécution du script (et pas la dernière collecte : on veut
+  // tous les AO ajoutés depuis le dernier passage, potentiellement issus
+  // de plusieurs collectes si le cron tourne toutes les heures).
+  const { data: etat, error: errEtat } = await supabase
+    .from('alertes_etat')
+    .select('derniere_execution')
+    .eq('id', 1)
     .single();
 
-  if (errCollecte || !derniereCollecte) {
-    console.error('Impossible de récupérer la dernière collecte:', errCollecte);
+  if (errEtat || !etat) {
+    console.error("Impossible de récupérer l'état alertes_etat:", errEtat);
     return;
   }
-  console.log(`Collecte du ${derniereCollecte.date_collecte} (id: ${derniereCollecte.id})`);
 
-  // 2. AO liés à cette collecte
-  const { data: aoCollectes, error: errAoCollectes } = await supabase
-    .from('ao_collectes')
-    .select('ao_id')
-    .eq('collecte_id', derniereCollecte.id);
+  const derniereExecution = etat.derniere_execution;
+  const debutDeCeRun = new Date().toISOString();
+  console.log(`Recherche des AO créés depuis ${derniereExecution}`);
 
-  if (errAoCollectes || !aoCollectes || aoCollectes.length === 0) {
-    console.log('Aucun AO pour cette collecte, fin du script.');
-    return;
-  }
-  const aoIds = aoCollectes.map((r) => r.ao_id);
-  console.log(`${aoIds.length} AO à vérifier.`);
-
-  // 3. Détails des AO
+  // 2. AO créés depuis la dernière exécution
   const { data: aos, error: errAos } = await supabase
     .from('ao')
-    .select('id, reference, intitule, objet, acheteur_public, montant_estime, analyse_resume, analyse_json')
-    .in('id', aoIds);
+    .select('id, reference, intitule, objet, acheteur_public, montant_estime, created_at, analyse_resume, analyse_json')
+    .gt('created_at', derniereExecution);
 
-  if (errAos || !aos) {
+  if (errAos) {
     console.error('Erreur récupération AO:', errAos);
     return;
   }
 
-  // 4. Domaines par AO
+  if (!aos || aos.length === 0) {
+    console.log('Aucun nouvel AO depuis la dernière exécution.');
+    await supabase.from('alertes_etat').update({ derniere_execution: debutDeCeRun }).eq('id', 1);
+    return;
+  }
+  console.log(`${aos.length} nouvel(aux) AO à vérifier.`);
+
+  const aoIds = aos.map((a) => a.id);
+
+  // 3. Domaines par AO
   const { data: aoDomaines } = await supabase
     .from('ao_domaines')
     .select('ao_id, domaine_id')
@@ -202,19 +207,25 @@ async function main() {
     domaineIdsParAo.get(row.ao_id).push(row.domaine_id);
   });
 
-  // 5. Critères actifs
+  // 4. Critères actifs
   const { data: criteres, error: errCriteres } = await supabase
     .from('alertes_criteres')
     .select('*')
     .eq('actif', true);
 
-  if (errCriteres || !criteres || criteres.length === 0) {
-    console.log('Aucun critère actif, fin du script.');
+  if (errCriteres) {
+    console.error('Erreur récupération critères:', errCriteres);
+    return;
+  }
+
+  if (!criteres || criteres.length === 0) {
+    console.log('Aucun critère actif.');
+    await supabase.from('alertes_etat').update({ derniere_execution: debutDeCeRun }).eq('id', 1);
     return;
   }
   console.log(`${criteres.length} critères actifs.`);
 
-  // 6. Matching
+  // 5. Matching
   const notificationsAInserer = [];
   for (const ao of aos) {
     for (const critere of criteres) {
@@ -226,6 +237,7 @@ async function main() {
           alerte_critere_id: critere.id,
           titre: `Nouvel AO : ${ao.intitule || ao.reference}`,
           message: `Correspond à votre critère "${critere.nom}". ${ao.acheteur_public || ''}`,
+          date_limite_offre: ao.date_limite_remise_plis,
           lu: false,
           email_envoye: false,
         });
@@ -235,11 +247,12 @@ async function main() {
 
   if (notificationsAInserer.length === 0) {
     console.log('Aucune correspondance trouvée.');
+    await supabase.from('alertes_etat').update({ derniere_execution: debutDeCeRun }).eq('id', 1);
     return;
   }
   console.log(`${notificationsAInserer.length} notifications à créer.`);
 
-  // 7. Insertion des notifications
+  // 6. Insertion des notifications
   const { data: notifsInserees, error: errInsert } = await supabase
     .from('notifications')
     .insert(notificationsAInserer)
@@ -250,9 +263,10 @@ async function main() {
     return;
   }
 
-  // 8. Envoi des emails groupés par utilisateur
+  // 7. Envoi des emails groupés par utilisateur
   if (!resend) {
     console.log("RESEND_API_KEY absent — notifications in-app créées, pas d'email envoyé.");
+    await supabase.from('alertes_etat').update({ derniere_execution: debutDeCeRun }).eq('id', 1);
     return;
   }
 
@@ -288,6 +302,9 @@ async function main() {
       console.error(`Erreur envoi email à ${utilisateur.email}:`, err);
     }
   }
+
+  // 8. On avance le curseur seulement une fois tout traité avec succès
+  await supabase.from('alertes_etat').update({ derniere_execution: debutDeCeRun }).eq('id', 1);
 
   console.log('--- Script alertes terminé ---');
 }
