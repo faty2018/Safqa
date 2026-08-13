@@ -237,7 +237,7 @@ async function main() {
           alerte_critere_id: critere.id,
           titre: `Nouvel AO : ${ao.intitule || ao.reference}`,
           message: `Correspond à votre critère "${critere.nom}". ${ao.acheteur_public || ''}`,
-          date_limite_offre: ao.date_limite_remise_plis,
+          date_limite_offre: ao.created_at,
           lu: false,
           email_envoye: false,
         });

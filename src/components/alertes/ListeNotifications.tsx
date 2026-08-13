@@ -48,10 +48,10 @@ export function ListeNotifications({ notifications }: { notifications: Notificat
                     </div>
                     {/* <span className="shrink-0 text-xs text-[var(--color-muted)]">{formatDate(notif.createdAt)}</span> */}
                     <span className="shrink-0 text-xs text-[var(--color-muted)]">
-                        {formatDate(notif.createdAt)}
+                        {/* {formatDate(notif.createdAt)} */}
                         {notif.dateLimiteOffre && (
                             <span className="ml-2 font-medium text-amber-600">
-                                · Publié le {new Date(notif.dateLimiteOffre).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" })}
+                                 Publié le {new Date(notif.dateLimiteOffre).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" })}
                             </span>
                         )}
                     </span>
