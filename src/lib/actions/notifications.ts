@@ -60,7 +60,7 @@ export async function marquerNotificationLue(id: string) {
     console.error("Erreur marquerNotificationLue:", error);
     return { success: false };
   }
-  revalidatePath("/alertes");
+  revalidatePath("/alertes", "layout");
   return { success: true };
 }
 
@@ -82,6 +82,6 @@ export async function marquerToutesLues() {
     console.error("Erreur marquerToutesLues:", error);
     return { success: false };
   }
-  revalidatePath("/alertes");
+  revalidatePath("/alertes", "layout");
   return { success: true };
 }

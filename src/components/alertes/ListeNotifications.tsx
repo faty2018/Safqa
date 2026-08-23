@@ -51,7 +51,12 @@ export function ListeNotifications({ notifications }: { notifications: Notificat
                         {/* {formatDate(notif.createdAt)} */}
                         {notif.dateLimiteOffre && (
                             <span className="ml-2 font-medium text-amber-600">
-                                 Publié le {new Date(notif.dateLimiteOffre).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" })}
+                                Publié le {new Date(notif.dateLimiteOffre).toLocaleDateString("fr-FR", {
+                                    day: "2-digit",
+                                    month: "short",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                })}
                             </span>
                         )}
                     </span>

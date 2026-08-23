@@ -2,8 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
-
-type StatutDemande = "en_attente" | "en_cours" | "resolu";
+import type { StatutDemande } from "@/lib/statuts-demande";
 
 export async function creerDemande(
   sujet: string,
@@ -103,6 +102,8 @@ export async function listerDemandesStaff() {
   return { data };
 }
 
+
+
 export async function prendreDemandeEnCharge(demandeId: string) {
   const supabase = await createClient();
 
@@ -118,10 +119,10 @@ export async function prendreDemandeEnCharge(demandeId: string) {
     .from("demandes_experts")
     .update({
       expert_id: user.id,
-      statut: "en_cours",
+      statut: "etude_dossier",
     })
     .eq("id", demandeId)
-    .eq("statut", "en_attente") // évite qu'on prenne une demande déjà prise
+    .eq("statut", "en_attente")
     .is("expert_id", null)
     .select()
     .single();
@@ -151,7 +152,6 @@ export async function changerStatut(demandeId: string, statut: StatutDemande) {
   revalidatePath("/assistance-experts");
   return { data };
 }
-
 export async function listerDemandesActives() {
   const supabase = await createClient();
 

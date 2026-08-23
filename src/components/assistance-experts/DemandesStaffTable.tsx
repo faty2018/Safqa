@@ -2,28 +2,31 @@
 
 import { useState } from "react";
 import { ExpertDemandeDetail } from "./ExpertDemandeDetail";
+import { STATUT_LABELS, STATUT_STYLES, type StatutDemande } from "@/lib/statuts-demande";
 
 type Demande = {
   id: string;
   sujet: string;
   description: string;
-  statut: "en_attente" | "en_cours" | "resolu";
+  statut: StatutDemande;
   created_at: string;
   expert_id: string | null;
   entreprises: { raison_sociale: string } | null;
 };
 
-const STATUT_LABELS: Record<Demande["statut"], string> = {
-  en_attente: "En attente",
-  en_cours: "En cours",
-  resolu: "Résolu",
-};
+// ... le reste du composant ne change pas, il utilise déjà STATUT_LABELS[d.statut] et STATUT_STYLES[d.statut]
 
-const STATUT_STYLES: Record<Demande["statut"], string> = {
-  en_attente: "bg-amber-50 text-amber-700 border-amber-200",
-  en_cours: "bg-blue-50 text-blue-700 border-blue-200",
-  resolu: "bg-green-50 text-green-700 border-green-200",
-};
+// const STATUT_LABELS: Record<Demande["statut"], string> = {
+//   en_attente: "En attente",
+//   en_cours: "En cours",
+//   resolu: "Résolu",
+// };
+
+// const STATUT_STYLES: Record<Demande["statut"], string> = {
+//   en_attente: "bg-amber-50 text-amber-700 border-amber-200",
+//   en_cours: "bg-blue-50 text-blue-700 border-blue-200",
+//   resolu: "bg-green-50 text-green-700 border-green-200",
+// };
 
 export function DemandesStaffTable({
   demandesInitiales,

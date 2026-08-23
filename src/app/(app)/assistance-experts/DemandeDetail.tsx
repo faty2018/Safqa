@@ -26,13 +26,15 @@ export function DemandeDetail({
   const [erreur, setErreur] = useState<string | null>(null);
 
   useEffect(() => {
-    listerMessages(demande.id).then(({ data }) => {
+    listerMessages(demande.id).then(({ data, error }) => {
+      if (error) console.error("Erreur chargement messages:", error);
       setMessages(data ?? []);
       setChargement(false);
     });
 
     const interval = setInterval(() => {
-      listerMessages(demande.id).then(({ data }) => {
+      listerMessages(demande.id).then(({ data, error }) => {
+        if (error) console.error("Erreur chargement messages (polling):", error);
         setMessages(data ?? []);
       });
     }, 7000);
@@ -85,11 +87,10 @@ export function DemandeDetail({
             messages.map((m) => (
               <div
                 key={m.id}
-                className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${
-                  m.auteur_type === "expert"
+                className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${m.auteur_type === "expert"
                     ? "bg-[var(--color-accent-light)]"
                     : "ml-auto bg-[var(--color-navy)] text-white"
-                }`}
+                  }`}
               >
                 <p className="mb-1 text-xs font-medium opacity-70">
                   {m.auteur_type === "expert"
