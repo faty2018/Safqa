@@ -43,7 +43,7 @@ export default async function AdminEntreprisesPage() {
                 const initiales = e.raison_sociale
                   .split(" ")
                   .slice(0, 2)
-                  .map((mot) => mot[0])
+                  .map((mot:String) => mot[0])
                   .join("")
                   .toUpperCase();
 
