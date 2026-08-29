@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { ProfilForm } from "@/components/profil/ProfilForm";
 
-export default async function ExpertProfilPage() {
+export default async function AdminProfilPage() {
   const supabase = await createClient();
   const {
     data: { user },
@@ -21,15 +21,15 @@ export default async function ExpertProfilPage() {
     <div>
       <h1 className="text-2xl font-semibold text-[var(--color-navy)]">Mon profil</h1>
       <p className="mt-1 text-sm text-[var(--color-muted)]">
-        Informations de votre compte expert.
+        Informations de votre compte administrateur.
       </p>
 
       <div className="mt-6 max-w-md">
         <ProfilForm
           nom={profil?.nom ?? ""}
           email={profil?.email ?? ""}
-          role="Expert"
-          updateAction="expert"
+          role="Super Admin"
+          updateAction="admin"
         />
       </div>
     </div>

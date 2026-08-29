@@ -29,3 +29,15 @@ export async function createClient() {
     }
   );
 }
+
+
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+
+// Pour les appels venant du mobile (token dans le header, pas de cookies)
+export function createClientForToken(token: string) {
+  return createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { global: { headers: { Authorization: `Bearer ${token}` } } }
+  );
+}

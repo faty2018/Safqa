@@ -1,13 +1,17 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { SupabaseClient } from "@supabase/supabase-js";
 import Groq from "groq-sdk";
-import { redirect } from "next/navigation";
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-export async function genererTrameReponse(aoId: string, forcerRegeneration = false) {
-  const supabase = await createClient();
+export async function genererTrameReponse(
+  aoId: string,
+  forcerRegeneration = false,
+  supabaseClient?: SupabaseClient
+) {
+  const supabase = supabaseClient ?? (await createClient());
 
   const {
     data: { user },
@@ -22,7 +26,6 @@ export async function genererTrameReponse(aoId: string, forcerRegeneration = fal
 
   if (!profile?.entreprise_id) return { error: "Entreprise introuvable" };
 
-  // Vérifie si une réponse existe déjà, pour éviter d'écraser un brouillon édité
   if (!forcerRegeneration) {
     const { data: existante } = await supabase
       .from("reponses")
@@ -88,7 +91,7 @@ Sections : Présentation de l'entreprise, Compréhension du besoin, Méthodologi
   let trame;
   try {
     const completion = await groq.chat.completions.create({
-      model: "llama-3.3-70b-versatile",
+      model: "openai/gpt-oss-120b",
       messages: [
         { role: "system", content: "Tu réponds uniquement en JSON valide, sans markdown." },
         { role: "user", content: prompt },
@@ -124,7 +127,7 @@ Sections : Présentation de l'entreprise, Compréhension du besoin, Méthodologi
 
   if (error) return { error: error.message };
 
-  redirect(`/reponses/${reponse.id}`);
+  return { reponseId: reponse.id };
 }
 
 export async function sauvegarderReponse(reponseId: string, trameJson: any) {
@@ -148,7 +151,6 @@ export async function sauvegarderReponse(reponseId: string, trameJson: any) {
   return { success: true };
 }
 
-
 export async function listerMesReponses() {
   const supabase = await createClient();
 
@@ -170,4 +172,34 @@ export async function listerMesReponses() {
   }
 
   return { data };
+}
+
+
+
+export async function genererTrameReponseMobile(aoId: string, forcerRegeneration = false) {
+  const supabase = SupabaseClient ?? (await createClient());
+  // 1. Récupérer le jeton JWT de la session active
+  const { data: { session }, error } = await supabase.auth.getSession();
+
+  if (error || !session) {
+    throw new Error("Utilisateur non connecté sur le mobile");
+  }
+
+  // 2. Envoyer la requête HTTP avec le token dans le header Authorization
+  const response = await fetch('https://votre-site-web.com/api/generer-reponse', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${session.access_token}`, // <--- FIX CRUCIAL POUR LE 401
+    },
+    body: JSON.stringify({ aoId, forcerRegeneration }),
+  });
+
+  const json = await response.json();
+
+  if (!response.ok) {
+    throw new Error(json.error || 'Erreur lors de la génération');
+  }
+
+  return json; // Renvoie { reponseId: '...' } ou { existeDeja: true, reponseId: '...' }
 }

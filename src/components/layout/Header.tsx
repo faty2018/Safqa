@@ -17,22 +17,18 @@ export function Header({ companyName, userName, nombreNotificationsNonLues = 0 }
 
   return (
     <header className="flex h-16 items-center justify-between border-b border-[var(--color-border)] bg-white px-6">
-      <div className="flex w-96 items-center gap-2 rounded-md border border-[var(--color-border)] px-3 py-2">
-        <Search size={16} className="text-[var(--color-muted)]" />
-        <input
-          type="text"
-          placeholder="Rechercher un marché, une entité..."
-          className="w-full text-sm outline-none placeholder:text-[var(--color-muted)]"
-        />
+      <div className="flex w-96 items-center gap-2 rounded-md  border-[var(--color-border)] px-3 py-2">
+
       </div>
 
       <div className="flex items-center gap-4">
-        <button
+        <Link
+          href="/assistance-experts"
           aria-label="Assistance experts"
           className="text-[var(--color-muted)] hover:text-[var(--color-navy)]"
         >
           <Headset size={20} />
-        </button>
+        </Link>
         <Link
           href="/alertes"
           aria-label="Notifications"

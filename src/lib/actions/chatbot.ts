@@ -109,7 +109,7 @@ export async function askChatbot(historique: ChatMessage[]) {
 
     // Premier appel : le modèle décide s'il a besoin d'un outil
     let completion = await groq.chat.completions.create({
-      model: process.env.GROQ_MODEL || "llama-3.3-70b-versatile",
+      model: process.env.GROQ_MODEL || "openai/gpt-oss-120b",
       max_tokens: 512,
       messages,
       tools: TOOLS,
@@ -135,7 +135,7 @@ export async function askChatbot(historique: ChatMessage[]) {
       }
 
       completion = await groq.chat.completions.create({
-        model: process.env.GROQ_MODEL || "llama-3.3-70b-versatile",
+        model: process.env.GROQ_MODEL || "openai/gpt-oss-120b",
         max_tokens: 512,
         messages,
         tools: TOOLS,

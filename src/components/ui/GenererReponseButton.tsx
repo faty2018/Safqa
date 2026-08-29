@@ -33,7 +33,6 @@ export function GenererReponseButton({ aoId }: { aoId: string }) {
       if (res?.reponseId) {
         router.push(`/reponses/${res.reponseId}`);
       }
-      // Si redirect() a été appelé côté serveur, on n'arrive jamais ici
     });
   }
 

@@ -5,6 +5,7 @@ import { deriveStatus, type AO } from "@/lib/types";
 import { ArrowRight, Bookmark, Building2 } from "lucide-react";
 import { NouveauxAOChart } from "@/components/dashboard/NouveauxAOChart";
 import { RepartitionSecteursChart } from "@/components/dashboard/RepartitionSecteursChart";
+import { getNombreNotificationsNonLues, getNotifications } from "@/lib/actions/notifications";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -33,12 +34,14 @@ export default async function DashboardPage() {
     { count: reponsesEnCours },
     { data: aoRecents30j },
     { data: suivisAvecDomaines },
+    nombreAlertesNonLues,
+    alertesRecentesToutes,
   ] = await Promise.all([
     entrepriseId
       ? supabase
-          .from("ao_suivis")
-          .select("*", { count: "exact", head: true })
-          .eq("entreprise_id", entrepriseId)
+        .from("ao_suivis")
+        .select("*", { count: "exact", head: true })
+        .eq("entreprise_id", entrepriseId)
       : Promise.resolve({ count: 0 }),
     supabase
       .from("ao")
@@ -46,20 +49,20 @@ export default async function DashboardPage() {
       .gte("created_at", seDaysAgo),
     entrepriseId
       ? supabase
-          .from("ao_suivis")
-          .select(
-            "date_ajout, ao(id, reference, intitule, acheteur_public, date_limite_remise_plis, lien_source)"
-          )
-          .eq("entreprise_id", entrepriseId)
-          .order("date_ajout", { ascending: false })
-          .limit(5)
+        .from("ao_suivis")
+        .select(
+          "date_ajout, ao(id, reference, intitule, acheteur_public, date_limite_remise_plis, lien_source)"
+        )
+        .eq("entreprise_id", entrepriseId)
+        .order("date_ajout", { ascending: false })
+        .limit(5)
       : Promise.resolve({ data: [] }),
     entrepriseId
       ? supabase
-          .from("reponses")
-          .select("*", { count: "exact", head: true })
-          .eq("entreprise_id", entrepriseId)
-          .eq("statut", "brouillon")
+        .from("reponses")
+        .select("*", { count: "exact", head: true })
+        .eq("entreprise_id", entrepriseId)
+        .eq("statut", "brouillon")
       : Promise.resolve({ count: 0 }),
     supabase
       .from("ao")
@@ -67,13 +70,17 @@ export default async function DashboardPage() {
       .gte("created_at", trenteDaysAgo),
     entrepriseId
       ? supabase
-          .from("ao_suivis")
-          .select("ao(ao_domaines(domaines(nom)))")
-          .eq("entreprise_id", entrepriseId)
+        .from("ao_suivis")
+        .select("ao(ao_domaines(domaines(nom)))")
+        .eq("entreprise_id", entrepriseId)
       : Promise.resolve({ data: [] }),
+    getNombreNotificationsNonLues(),
+    getNotifications(),
   ]);
 
-  const suivis = (suivisRecents ?? []) as any[];
+    const suivis = (suivisRecents ?? []) as any[];
+  const alertesRecentes = alertesRecentesToutes.slice(0, 3);
+  
 
   // Regroupement des nouveaux AO par jour (30 derniers jours)
   const compteParJour: Record<string, number> = {};
@@ -145,10 +152,13 @@ export default async function DashboardPage() {
             {reponsesEnCours ?? 0}
           </p>
         </div>
-        <div className="rounded-lg border border-[var(--color-navy)] bg-[var(--color-navy)] p-4">
+        <Link
+          href="/alertes"
+          className="rounded-lg border border-[var(--color-navy)] bg-[var(--color-navy)] p-4 transition-opacity hover:opacity-90"
+        >
           <p className="text-xs font-medium uppercase text-white/70">Alertes non lues</p>
-          <p className="mt-2 text-2xl font-semibold text-white">—</p>
-        </div>
+          <p className="mt-2 text-2xl font-semibold text-white">{nombreAlertesNonLues}</p>
+        </Link>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -231,12 +241,43 @@ export default async function DashboardPage() {
           )}
         </div>
 
-        <div className="rounded-lg border border-[var(--color-border)] bg-white p-4">
-          <h2 className="mb-3 text-sm font-semibold text-[var(--color-navy)]">Alertes récentes</h2>
-          <p className="text-sm text-[var(--color-muted)]">
-            Le fil d&apos;alertes se branche sur la table <code>alerts</code> — module pas encore
-            construit (voir cahier des charges, module 6).
-          </p>
+                <div className="rounded-lg border border-[var(--color-border)] bg-white p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-[var(--color-navy)]">Alertes récentes</h2>
+            <Link
+              href="/alertes"
+              className="text-xs font-medium text-[var(--color-navy)] hover:underline"
+            >
+              Tout voir →
+            </Link>
+          </div>
+
+          {alertesRecentes.length === 0 ? (
+            <p className="text-sm text-[var(--color-muted)] py-6 text-center">
+              Aucune alerte pour l&apos;instant.
+            </p>
+          ) : (
+            <div className="divide-y divide-[var(--color-border)]">
+              {alertesRecentes.map((a) => (
+                <Link
+                  key={a.id}
+                  href={`/recherche/${a.aoId}`}
+                  className="flex items-start gap-2 py-2.5 hover:opacity-80"
+                >
+                  {!a.lu && (
+                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-accent)]" />
+                  )}
+                  <p
+                    className={`truncate text-xs ${
+                      a.lu ? "text-[var(--color-muted)]" : "font-medium text-[var(--color-navy)]"
+                    }`}
+                  >
+                    {a.titre}
+                  </p>
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

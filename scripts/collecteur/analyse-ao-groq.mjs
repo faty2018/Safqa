@@ -22,7 +22,7 @@ const supabase = createClient(
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 const BUCKET = 'dossiers-consultation';
-const GROQ_MODEL = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile'; // ou 'llama-3.1-8b-instant' si tu veux + de débit
+const GROQ_MODEL = process.env.GROQ_MODEL || 'openai/gpt-oss-120b'; // ou 'llama-3.1-8b-instant' si tu veux + de débit
 const MAX_CHARS_PAR_DOC = 6000; // pour rester safe niveau TPM (12000 tokens/min sur llama-3.3-70b)
 
 
