@@ -33,7 +33,7 @@ export default async function AdminAssistanceExpertsPage() {
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--color-navy)] text-xs font-medium text-white">
                   {e.nom
                     .split(" ")
-                    .map((n) => n[0])
+                    .map((n: string) => n[0])
                     .join("")
                     .slice(0, 2)}
                 </div>
