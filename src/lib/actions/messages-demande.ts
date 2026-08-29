@@ -47,7 +47,7 @@ export async function envoyerMessage(demandeId: string, contenu: string) {
 
   const { data, error } = await supabase
     .from("messages_demande")
-    .insert(insertPayload)
+    .insert(insertPayload as any)
     .select()
     .single();
 

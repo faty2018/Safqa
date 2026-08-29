@@ -8,7 +8,11 @@ export function BoutonToutMarquerLu() {
 
   return (
     <button
-      onClick={() => startTransition(() => marquerToutesLues())}
+      onClick={() =>
+        startTransition(() => {
+          marquerToutesLues();
+        })
+      }
       disabled={isPending}
       className="text-sm text-[var(--color-accent)] disabled:opacity-50"
     >

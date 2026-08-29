@@ -2,15 +2,8 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { listerMessages, envoyerMessage } from "@/lib/actions/messages-demande";
-
-type Message = {
-  id: string;
-  auteur_type: "utilisateur" | "expert";
-  contenu: string;
-  created_at: string;
-  utilisateurs: { nom: string } | null;
-  staff_safqa: { nom: string } | null;
-};
+import { Message } from "@/app/types/assistance-experts";
+import { one } from "@/lib/normalise";
 
 export function DemandeDetail({
   demande,
@@ -25,17 +18,25 @@ export function DemandeDetail({
   const [isPending, startTransition] = useTransition();
   const [erreur, setErreur] = useState<string | null>(null);
 
+  function normaliserMessages(data: any[] | null | undefined): Message[] {
+    return (data ?? []).map((m) => ({
+      ...m,
+      utilisateurs: one(m.utilisateurs),
+      staff_safqa: one(m.staff_safqa),
+    }));
+  }
+
   useEffect(() => {
     listerMessages(demande.id).then(({ data, error }) => {
       if (error) console.error("Erreur chargement messages:", error);
-      setMessages(data ?? []);
+      setMessages(normaliserMessages(data));
       setChargement(false);
     });
 
     const interval = setInterval(() => {
       listerMessages(demande.id).then(({ data, error }) => {
         if (error) console.error("Erreur chargement messages (polling):", error);
-        setMessages(data ?? []);
+        setMessages(normaliserMessages(data));
       });
     }, 7000);
 
@@ -46,14 +47,14 @@ export function DemandeDetail({
     if (!nouveauMessage.trim()) return;
 
     startTransition(async () => {
-      const { data, error } = await envoyerMessage(demande.id, nouveauMessage);
+      const { error } = await envoyerMessage(demande.id, nouveauMessage);
       if (error) {
         setErreur(error);
         return;
       }
       setErreur(null);
       const { data: refreshed } = await listerMessages(demande.id);
-      setMessages(refreshed ?? []);
+      setMessages(normaliserMessages(refreshed));
       setNouveauMessage("");
     });
   }

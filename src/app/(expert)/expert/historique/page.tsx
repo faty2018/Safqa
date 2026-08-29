@@ -1,5 +1,6 @@
 import { listerHistorique } from "@/lib/actions/demandes-experts";
 import { DemandesStaffTable } from "@/components/assistance-experts/DemandesStaffTable";
+import { one } from "@/lib/normalise";
 
 export default async function ExpertHistoriquePage() {
   const { data: demandes, error } = await listerHistorique();
@@ -19,7 +20,10 @@ export default async function ExpertHistoriquePage() {
         </p>
       ) : (
         <DemandesStaffTable
-          demandesInitiales={demandes ?? []}
+          demandesInitiales={(demandes ?? []).map((d: any) => ({
+            ...d,
+            entreprises: one(d.entreprises),
+          }))}
           emptyMessage="Aucune demande résolue pour le moment."
         />
       )}

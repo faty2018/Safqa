@@ -32,7 +32,7 @@ export function ListeNotifications({ notifications }: { notifications: Notificat
                     key={notif.id}
                     href={`/recherche/${notif.aoId}`}
                     onClick={() => {
-                        if (!notif.lu) startTransition(() => marquerNotificationLue(notif.id));
+                        if (!notif.lu) startTransition(() => { marquerNotificationLue(notif.id); });
                     }}
                     className={`flex items-start justify-between gap-4 p-4 hover:bg-[var(--background)] ${!notif.lu ? "bg-blue-50/50" : ""
                         }`}

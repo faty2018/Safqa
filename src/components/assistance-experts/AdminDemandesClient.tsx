@@ -2,16 +2,7 @@
 
 import { useState } from "react";
 import { DemandesStaffTable } from "./DemandesStaffTable";
-
-type Demande = {
-    id: string;
-    sujet: string;
-    description: string;
-    statut: "en_attente" | "en_cours" | "resolu";
-    created_at: string;
-    expert_id: string | null;
-    entreprises: { raison_sociale: string } | null;
-};
+import { Demande } from "@/app/types/assistance-experts";
 
 export function AdminDemandesClient({
     demandesActives,

@@ -6,29 +6,9 @@ import {
   prendreDemandeEnCharge,
   changerStatut,
 } from "@/lib/actions/demandes-experts";
-import {
-  STATUT_LABELS,
-  getStatutSuivant,
-  type StatutDemande,
-} from "@/lib/statuts-demande";
-
-type Message = {
-  id: string;
-  auteur_type: "utilisateur" | "expert";
-  contenu: string;
-  created_at: string;
-  utilisateurs: { nom: string } | null;
-  staff_safqa: { nom: string } | null;
-};
-
-type Demande = {
-  id: string;
-  sujet: string;
-  description: string;
-  statut: StatutDemande;
-  expert_id: string | null;
-  entreprises: { raison_sociale: string } | null;
-};
+import { STATUT_LABELS, getStatutSuivant } from "@/lib/statuts-demande";
+import { Demande, Message } from "@/app/types/assistance-experts";
+import { one } from "@/lib/normalise";
 
 export function ExpertDemandeDetail({
   demande,
@@ -47,7 +27,13 @@ export function ExpertDemandeDetail({
 
   useEffect(() => {
     listerMessages(demande.id).then(({ data }) => {
-      setMessages(data ?? []);
+      setMessages(
+        (data ?? []).map((m: any) => ({
+          ...m,
+          utilisateurs: one(m.utilisateurs),
+          staff_safqa: one(m.staff_safqa),
+        }))
+      );
       setChargement(false);
     });
   }, [demande.id]);
@@ -56,14 +42,20 @@ export function ExpertDemandeDetail({
     if (!nouveauMessage.trim()) return;
 
     startTransition(async () => {
-      const { data, error } = await envoyerMessage(demande.id, nouveauMessage);
+      const { error } = await envoyerMessage(demande.id, nouveauMessage);
       if (error) {
         setErreur(error);
         return;
       }
       setErreur(null);
       const { data: refreshed } = await listerMessages(demande.id);
-      setMessages(refreshed ?? []);
+      setMessages(
+        (refreshed ?? []).map((m: any) => ({
+          ...m,
+          utilisateurs: one(m.utilisateurs),
+          staff_safqa: one(m.staff_safqa),
+        }))
+      );
       setNouveauMessage("");
     });
   }

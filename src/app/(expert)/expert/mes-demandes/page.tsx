@@ -1,5 +1,6 @@
 import { listerDemandesActives } from "@/lib/actions/demandes-experts";
 import { DemandesStaffTable } from "@/components/assistance-experts/DemandesStaffTable";
+import { one } from "@/lib/normalise";
 
 export default async function ExpertMesDemandesPage() {
   const { data: demandes, error } = await listerDemandesActives();
@@ -19,7 +20,10 @@ export default async function ExpertMesDemandesPage() {
         </p>
       ) : (
         <DemandesStaffTable
-          demandesInitiales={demandes ?? []}
+          demandesInitiales={(demandes ?? []).map((d: any) => ({
+  ...d,
+  entreprises: one(d.entreprises),
+}))}
           emptyMessage="Aucune demande active pour le moment."
         />
       )}

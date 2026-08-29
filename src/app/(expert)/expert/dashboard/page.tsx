@@ -38,19 +38,19 @@ export default async function ExpertDashboardPage() {
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
           <p className="text-sm text-amber-700">En attente</p>
           <p className="mt-1 text-2xl font-semibold text-amber-700">
-            {countEnAttente?? 0}
+            {countEnAttente ?? 0}
           </p>
         </div>
         <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
           <p className="text-sm text-blue-700">En cours</p>
           <p className="mt-1 text-2xl font-semibold text-blue-700">
-            {countEnCours?? 0}
+            {countEnCours ?? 0}
           </p>
         </div>
         <div className="rounded-lg border border-green-200 bg-green-50 p-4">
           <p className="text-sm text-green-700">Résolues</p>
           <p className="mt-1 text-2xl font-semibold text-green-700">
-            {countResolues?? 0}
+            {countResolues ?? 0}
           </p>
         </div>
       </div>
@@ -70,7 +70,7 @@ export default async function ExpertDashboardPage() {
               >
                 <span>{d.sujet}</span>
                 <span className="text-[var(--color-muted)]">
-                  {d.entreprises?.raison_sociale ?? "—"}
+                  {(Array.isArray(d.entreprises) ? d.entreprises[0] : d.entreprises)?.raison_sociale ?? "—"}
                 </span>
               </li>
             ))}

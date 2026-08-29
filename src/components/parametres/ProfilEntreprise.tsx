@@ -71,11 +71,11 @@ export default function ProfilEntreprise({ entreprise, isAdmin }: { entreprise: 
     const payload = {
       entreprise_id: entreprise.id,
       description: form.description,
-      secteurs_activite: form.secteurs_activite.split(',').map((s) => s.trim()).filter(Boolean),
+      secteurs_activite: form.secteurs_activite.split(',').map((s: string) => s.trim()).filter(Boolean),
       effectif: form.effectif ? Number(form.effectif) : null,
       annees_experience: form.annees_experience ? Number(form.annees_experience) : null,
       moyens_materiels: form.moyens_materiels,
-      certifications: form.certifications.split(',').map((s) => s.trim()).filter(Boolean),
+      certifications: form.certifications.split(',').map((s: string) => s.trim()).filter(Boolean),
       references_marches: references
         .filter((r) => r.nom_marche.trim() || r.client.trim())
         .map((r) => ({

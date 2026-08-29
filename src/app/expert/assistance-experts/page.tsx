@@ -1,5 +1,6 @@
 import { listerDemandesStaff } from "@/lib/actions/demandes-experts";
 import { ExpertDemandesClient } from "@/components/assistance-experts/ExpertDemandesClient";
+import { one } from "@/lib/normalise";
 
 export default async function ExpertAssistanceExpertsPage() {
   const { data: demandes, error } = await listerDemandesStaff();
@@ -12,5 +13,11 @@ export default async function ExpertAssistanceExpertsPage() {
     );
   }
 
-  return <ExpertDemandesClient demandesInitiales={demandes ?? []} />;
+  const demandesNormalisees = (demandes ?? []).map((d: any) => ({
+    ...d,
+    entreprises: one(d.entreprises),
+    staff_safqa: one(d.staff_safqa),
+  }));
+
+  return <ExpertDemandesClient demandesInitiales={demandesNormalisees} />;
 }

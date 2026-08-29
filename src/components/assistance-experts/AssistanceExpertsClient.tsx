@@ -3,18 +3,8 @@
 import { useState } from "react";
 import { NouvelleDemandeModal } from "../../app/(app)/assistance-experts/NouvelleDemandeModal";
 import { DemandeDetail } from "../../app/(app)/assistance-experts/DemandeDetail";
-import { STATUT_LABELS, STATUT_STYLES, type StatutDemande } from "@/lib/statuts-demande";
-
-type Demande = {
-  id: string;
-  sujet: string;
-  description: string;
-  statut: StatutDemande;
-  created_at: string;
-  ao_id: string | null;
-  expert_id: string | null;
-  staff_safqa: { nom: string } | null;
-};
+import { STATUT_LABELS, STATUT_STYLES } from "@/lib/statuts-demande";
+import { Demande } from "@/app/types/assistance-experts";
 
 export function AssistanceExpertsClient({
   demandesInitiales,

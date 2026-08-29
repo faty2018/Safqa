@@ -177,7 +177,7 @@ export async function listerMesReponses() {
 
 
 export async function genererTrameReponseMobile(aoId: string, forcerRegeneration = false) {
-  const supabase = SupabaseClient ?? (await createClient());
+  const supabase = await createClient();
   // 1. Récupérer le jeton JWT de la session active
   const { data: { session }, error } = await supabase.auth.getSession();
 

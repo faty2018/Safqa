@@ -2,28 +2,8 @@
 
 import { useState } from "react";
 import { ExpertDemandeDetail } from "./ExpertDemandeDetail";
-
-type Demande = {
-  id: string;
-  sujet: string;
-  description: string;
-  statut: "en_attente" | "en_cours" | "resolu";
-  created_at: string;
-  expert_id: string | null;
-  entreprises: { raison_sociale: string } | null;
-};
-
-const STATUT_LABELS: Record<Demande["statut"], string> = {
-  en_attente: "En attente",
-  en_cours: "En cours",
-  resolu: "Résolu",
-};
-
-const STATUT_STYLES: Record<Demande["statut"], string> = {
-  en_attente: "bg-amber-50 text-amber-700 border-amber-200",
-  en_cours: "bg-blue-50 text-blue-700 border-blue-200",
-  resolu: "bg-green-50 text-green-700 border-green-200",
-};
+import { STATUT_LABELS, STATUT_STYLES } from "@/lib/statuts-demande";
+import { Demande } from "@/app/types/assistance-experts";
 
 type Filtre = "toutes" | "en_attente" | "les_miennes";
 
