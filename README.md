@@ -57,20 +57,3 @@ C'est le problème qu'on a eu avec Stitch : chaque écran généré séparément
 palette. Ici, toutes les couleurs (bleu marine, accent, statuts) sont définies une seule fois en
 haut de globals.css, puis utilisées partout via var(--color-navy) etc. Si un jour tu changes
 le bleu marine, tu le changes à un seul endroit.
-
-### Où sont les vraies données ?
-
-Nulle part encore — chaque page a des données factices (mock) ou un TODO en attendant que les
-tables Supabase existent. Le prochain gros morceau, c'est de créer le schéma Supabase
-(categories, domaines, sous_domaines, organismes, tenders, companies, responses,
-alerts...) à partir de ton diagramme de classes, puis de remplacer les mocks par de vraies
-requêtes (createClient().from("tenders").select("*")).
-
-### Prochaines étapes suggérées
-
-1. Créer le projet Supabase, récupérer l'URL + clé anon, remplir .env.local
-2. Traduire le diagramme de classes en tables Supabase (SQL ou éditeur visuel)
-3. Brancher l'authentification (login/signup, multi-tenant via company_id)
-4. Remplacer les mocks de dashboard/page.tsx et recherche/page.tsx par de vraies requêtes
-5. Construire les écrans encore en TODO (Analyse IA, Réponses, etc.) en suivant le même
-   pattern que Dashboard
